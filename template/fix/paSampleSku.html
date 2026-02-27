@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PA sku预计留样标识查询或新增</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="../css_js/script/vue.global.js"></script>
+    <script src="../css_js/script/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px 0;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 6px;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 8px 0;
+            font-weight: bold;
+        }
+        .alert-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .env-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .env-test { background-color: #ffc107; color: #212529; }
+        .env-local { background-color: #17a2b8; color: white; }
+        .env-uat { background-color: #0d6efd; color: white; }
+        .env-prod { background-color: #dc3545; color: white; }
+        .sample-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .sample-yes { background-color: #198754; color: white; }
+        .sample-no { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- 页面标题和环境信息 -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2>{{ message }}</h2>
+            <p class="text-muted">当前环境：<span :class="`env-badge ${envClass}`">{{ envMsg }}</span></p>
+        </div>
+    </div>
+
+    <!-- 查询卡片 -->
+    <div class="card">
+        <div class="card-header">
+            SKU预计留样查询
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="skuIdInput" class="form-label fw-bold">SKU ID列表</label>
+                    <textarea v-model="skuIdString" id="skuIdInput" class="form-control" placeholder="SKU ID,多个请换行" rows="4"></textarea>
+                    <div class="form-text">系统会自动去除空行和重复的SKU ID</div>
+                </div>
+                <div class="col-md-4 mb-3 d-flex flex-column">
+                    <label class="form-label fw-bold invisible">查询按钮</label>
+                    <button @click="search" class="btn btn-primary btn-action">
+                        <i class="bi bi-search"></i> 查询预计留样
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果列表卡片 -->
+    <div v-if="list && list.length > 0" class="card">
+        <div class="card-header">
+            查询结果 <span class="text-sm text-white-500">(共 {{ list.length }} 条记录)</span>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">SKU信息</th>
+                        <th scope="col">状态</th>
+                        <th scope="col">创建信息</th>
+                        <th scope="col">更新日期</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="info in list" :key="info.id || info.skuId" :class="{ 'table-danger': info.isSample === '未留样' }">
+                        <td>{{ info.id || '-' }}</td>
+                        <td>
+                            <div class="mb-1">
+                                <span :class="{ 'fw-bold': info.isSample === '未留样' }">{{ info.skuId }}</span>
+                            </div>
+                            <div class="mb-1">
+                                <span :class="`sample-badge ${info.isSample === '有留样' ? 'sample-yes' : 'sample-no'}`">
+                                    {{ info.isSample }}
+                                </span>
+                            </div>
+                            <div v-if="info.category" class="text-sm text-muted">
+                                类型: {{ info.category }}
+                            </div>
+                        </td>
+                        <td>{{ info.state || '-' }}</td>
+                        <td>
+                            <div class="mb-1">{{ info.createBy || '-' }}</div>
+                            <div class="text-sm text-muted">{{ info.createTime || '-' }}</div>
+                        </td>
+                        <td>{{ info.updateTime || '-' }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 打标识卡片 -->
+    <div class="card">
+        <div class="card-header">
+            处理打留样标识
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="addSkuIdInput" class="form-label fw-bold">SKU ID列表</label>
+                    <textarea v-model="addSkuIdString" id="addSkuIdInput" class="form-control" placeholder="SKU ID,多个请换行" rows="4"></textarea>
+                    <div class="form-text">系统会自动去除空行和重复的SKU ID</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="statusSelect" class="form-label fw-bold">处理选项</label>
+                    <select v-model="status" class="form-select" id="statusSelect" @change="changeStatus">
+                        <option value="">请选择处理方式</option>
+                        <option value="1">只更新日期</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <button @click="update" class="btn btn-primary btn-action">
+                        <i class="bi bi-check-circle"></i> 确认处理
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Toast通知容器 -->
+    <div class="toast-container">
+        <div v-for="(toast, index) in toasts" 
+             :key="toast.id" 
+             :class="['toast-notification', toast.type, { closing: toast.closing }]">
+            <i class="toast-icon bi" :class="{
+                'bi-check-circle-fill': toast.type === 'success',
+                'bi-exclamation-triangle-fill': toast.type === 'error',
+                'bi-info-circle-fill': toast.type === 'info',
+                'bi-exclamation-circle-fill': toast.type === 'warning'
+            }"></i>
+            <div class="toast-content">{{ toast.message }}</div>
+            <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+        </div>
+    </div>
+</div>
+
+<script src="../css_js/own/lizi.js"></script>
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            this.initPage();
+            return {
+                message: 'PA sku预计留样标识',
+                skuIdString: '',
+                addSkuIdString: '',
+                status: '',
+                onlyUpdateTime: false,
+                list: [],
+                loading: false,
+                env: "",
+                envMsg: "",
+                envClass: "",
+                url: "http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            }
+        },
+
+        methods: {
+            // 初始化页面，获取环境信息
+            async initPage() {
+                const data = {
+                    action: "paSampleSku",
+                    params: {}
+                };
+
+                try {
+                    this.url = "http://172.16.29.23:90/php/controller";
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    if (res.status === 200) {
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                    }
+                } catch (error) {
+                    this.showError("初始化失败，无法获取环境信息");
+                    console.error("初始化错误:", error);
+                }
+            },
+
+            // 设置环境信息显示
+            setEnvMessage() {
+                switch(this.env) {
+                    case 'test':
+                        this.envMsg = 'Test环境';
+                        this.envClass = 'env-test';
+                        break;
+                    case 'local':
+                        this.envMsg = '开发环境';
+                        this.envClass = 'env-local';
+                        break;
+                    case 'uat':
+                        this.envMsg = 'UAT环境';
+                        this.envClass = 'env-uat';
+                        break;
+                    default:
+                        this.envMsg = '生产环境';
+                        this.envClass = 'env-prod';
+                }
+            },
+
+            // 查询预计留样
+            async search() {
+                // 重置消息
+                this.loading = true;
+                ;
+                ;
+                this.list = [];
+
+                // 验证输入
+                if (!this.skuIdString.trim()) {
+                    this.loading = false;
+                    this.showError("请输入SKU ID");
+                    return;
+                }
+
+                // 处理SKU ID列表
+                let skuIdList = this.skuIdString.split("\n")
+                    .map(sku => sku.trim())
+                    .filter(sku => sku); // 过滤空字符串
+
+                // 去重
+                skuIdList = [...new Set(skuIdList)];
+
+                if (skuIdList.length === 0) {
+                    this.loading = false;
+                    this.showError("SKU ID列表不能为空");
+                    return;
+                }
+
+                if (skuIdList.length > 500) {
+                    this.loading = false;
+                    this.showError("SKU查询过多，请不要超过500个");
+                    return;
+                }
+
+                const data = {
+                    action: "paSampleSku",
+                    params: {
+                        skuIdList: skuIdList
+                    }
+                };
+
+                try {
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    this.loading = false;
+
+                    if (res.status === 200) {
+                        let returnlist = res.data.data || [];
+                        let skuMap = {};
+
+                        // 构建SKU映射
+                        for (let item of returnlist) {
+                            if (!skuMap.hasOwnProperty(item.skuId)) {
+                                skuMap[item.skuId] = [];
+                            }
+                            skuMap[item.skuId].push(item);
+                        }
+
+                        // 处理查询结果
+                        for (let sku of skuIdList) {
+                            if (skuMap.hasOwnProperty(sku)) {
+                                for (let i of skuMap[sku]) {
+                                    i['isSample'] = "有留样";
+                                    this.list.push(i);
+                                }
+                            } else {
+                                this.list.push({
+                                    id: null,
+                                    skuId: sku,
+                                    category: "",
+                                    state: "",
+                                    isSample: "未留样",
+                                    createBy: "",
+                                    createTime: "",
+                                    updateTime: ""
+                                });
+                            }
+                        }
+
+                        if (this.list.length === 0) {
+                            this.showError("没有找到相关数据");
+                        }
+                    } else {
+                        this.showError("查询失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("查询错误:", error);
+                }
+            },
+
+            // 更新留样标识
+            async update() {
+                // 重置消息
+                this.loading = true;
+                ;
+                ;
+
+                // 验证输入
+                if (!this.addSkuIdString.trim()) {
+                    this.loading = false;
+                    this.showError("请输入SKU ID");
+                    return;
+                }
+
+                // 处理SKU ID列表
+                let addskuIdList = this.addSkuIdString.split("\n")
+                    .map(sku => sku.trim())
+                    .filter(sku => sku); // 过滤空字符串
+
+                // 去重
+                addskuIdList = [...new Set(addskuIdList)];
+
+                if (addskuIdList.length === 0) {
+                    this.loading = false;
+                    this.showError("SKU ID列表不能为空");
+                    return;
+                }
+
+                const data = {
+                    action: "paSampleSku",
+                    params: {
+                        addskuIdList: addskuIdList,
+                        onlyUpdateTime: this.onlyUpdateTime
+                    }
+                };
+
+                try {
+                    let res = await axios.post(`${this.url}/update.php`, data, this.header);
+                    this.loading = false;
+
+                    if (res.status === 200 && res.data === true) {
+                        this.showSuccess("处理成功，请刷新查看结果");
+                        // 清空输入框
+                        this.addSkuIdString = "";
+                        this.status = "";
+                        this.onlyUpdateTime = false;
+                    } else {
+                        this.showError("处理失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("更新错误:", error);
+                }
+            },
+
+            // 更改状态
+            changeStatus() {
+                this.onlyUpdateTime = this.status === '1';
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

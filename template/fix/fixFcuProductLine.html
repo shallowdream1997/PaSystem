@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PA FCU产品线查询和补充</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="../css_js/script/vue.global.js"></script>
+    <script src="../css_js/script/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <link rel="stylesheet" href="../css_js/bootstrap-5.3.0/css/bootstrap-icons.min.css">
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px 0;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 6px;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 8px 0;
+            font-weight: bold;
+        }
+        .alert-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .env-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .env-test { background-color: #ffc107; color: #212529; }
+        .env-local { background-color: #17a2b8; color: white; }
+        .env-uat { background-color: #0d6efd; color: white; }
+        .env-prod { background-color: #dc3545; color: white; }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .status-success { background-color: #198754; color: white; }
+        .status-warning { background-color: #ffc107; color: #212529; }
+        .status-error { background-color: #dc3545; color: white; }
+        .progress-container {
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        .progress {
+            height: 20px;
+            border-radius: 10px;
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        .result-container {
+            margin-top: 20px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .result-header {
+            padding: 10px 15px;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-header-success {
+            background-color: #198754;
+        }
+        .result-header-partial {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .result-header-error {
+            background-color: #dc3545;
+        }
+        .result-body {
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-top: none;
+        }
+        .result-item {
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .result-item-success {
+            background-color: #d1e7dd;
+            border-left: 4px solid #198754;
+        }
+        .result-item-error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .result-summary {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .collapse-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+        .collapse-btn:hover {
+            opacity: 0.8;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- 页面标题和环境信息 -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2>{{ message }}</h2>
+            <p class="text-muted">当前环境：<span :class="`env-badge ${envClass}`">{{ envMsg }}</span></p>
+        </div>
+    </div>
+
+    <!-- 查询条件卡片 -->
+    <div class="card">
+        <div class="card-header">
+            查询条件
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="fcuIdInput" class="form-label fw-bold">FCU ID列表</label>
+                    <textarea v-model="fcuIdString" id="fcuIdInput" class="form-control" placeholder="FCU ID,多个请换行" rows="4"></textarea>
+                    <div class="form-text">系统会自动去除空行和重复的FCU ID</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <button @click="search" class="btn btn-primary btn-action">
+                        查询产品线信息
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button @click="update" class="btn btn-success btn-action" :disabled="list.length === 0">
+                        补充产品线
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查询结果卡片 -->
+    <div v-if="list && list.length > 0" class="card">
+        <div class="card-header">
+            产品线信息 <span class="text-sm text-white-500">(共 {{ list.length }} 条记录)</span>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th scope="col">FCU ID</th>
+                        <th scope="col">SKU ID</th>
+                        <th scope="col">状态</th>
+                        <th scope="col">产品线</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="info in list" :key="info.fcuId" :class="getStatusRowClass(info)">
+                        <td><b>{{ info.fcuId }}</b></td>
+                        <td>{{ info.skuId || '-' }}</td>
+                        <td>
+                            <span :class="`status-badge ${getStatusClass(info.messages)}`">
+                                {{ info.messages }}
+                            </span>
+                        </td>
+                        <td>{{ info.productLine || '-' }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进度条 -->
+    <div v-if="showProgress" class="card">
+        <div class="card-body">
+            <div class="progress-container">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-sm font-weight-bold">{{ progressText }}</span>
+                    <span class="text-sm font-weight-bold">{{ progressPercentage }}%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" :style="{ width: progressPercentage + '%' }" :aria-valuenow="progressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 更新结果展示 -->
+    <div v-if="showResults" class="result-container" :class="{ 'hidden': resultsCollapsed }">
+        <div :class="`result-header ${resultHeaderClass}`">
+            <span>{{ resultSummary }}</span>
+            <button class="collapse-btn" @click="toggleResults">
+                <i :class="resultsCollapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
+            </button>
+        </div>
+        <div v-if="!resultsCollapsed" class="result-body">
+            <div class="result-summary">{{ resultSummary }}</div>
+            <div v-if="updateResults.length > 0">
+                <div v-for="(result, index) in updateResults" :key="index" :class="`result-item ${result.status === 'success' ? 'result-item-success' : 'result-item-error'}`">
+                    {{ result.message }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast通知容器 -->
+    <div class="toast-container">
+        <div v-for="(toast, index) in toasts" 
+             :key="toast.id" 
+             :class="['toast-notification', toast.type, { closing: toast.closing }]">
+            <i class="toast-icon bi" :class="{
+                'bi-check-circle-fill': toast.type === 'success',
+                'bi-exclamation-triangle-fill': toast.type === 'error',
+                'bi-info-circle-fill': toast.type === 'info',
+                'bi-exclamation-circle-fill': toast.type === 'warning'
+            }"></i>
+            <div class="toast-content">{{ toast.message }}</div>
+            <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            this.initPage();
+            return {
+                message: 'PA FCU产品线查询和补充',
+                fcuIdString: '',
+                list: [],
+                loading: false,
+                env: "",
+                envMsg: "",
+                envClass: "",
+                url: "http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                },
+                // 新增进度和结果相关状态
+                showProgress: false,
+                progressText: '',
+                progressPercentage: 0,
+                showResults: false,
+                resultsCollapsed: false,
+                updateResults: [],
+                resultSummary: '',
+                resultHeaderClass: ''
+            }
+        },
+
+        methods: {
+            // 初始化页面，获取环境信息
+            async initPage() {
+                const data = {
+                    action: "fixFcuProductLine",
+                    params: {}
+                };
+
+                try {
+                    this.url = "http://172.16.29.23:90/php/controller";
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    if (res.status === 200) {
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                    }
+                } catch (error) {
+                    this.showError("初始化失败，无法获取环境信息");
+                    console.error("初始化错误:", error);
+                }
+            },
+
+            // 设置环境信息显示
+            setEnvMessage() {
+                switch(this.env) {
+                    case 'test':
+                        this.envMsg = 'Test环境';
+                        this.envClass = 'env-test';
+                        break;
+                    case 'local':
+                        this.envMsg = '开发环境';
+                        this.envClass = 'env-local';
+                        break;
+                    case 'uat':
+                        this.envMsg = 'UAT环境';
+                        this.envClass = 'env-uat';
+                        break;
+                    default:
+                        this.envMsg = '生产环境';
+                        this.envClass = 'env-prod';
+                }
+            },
+
+            // 根据消息内容获取状态类
+            getStatusClass(message) {
+                if (message.includes('已存在') || message.includes('补充成功')) {
+                    return 'status-success';
+                } else if (message.includes('找不到')) {
+                    return 'status-error';
+                } else {
+                    return 'status-warning';
+                }
+            },
+
+            // 根据消息内容获取表格行类
+            getStatusRowClass(info) {
+                if (info.messages.includes('已存在') || info.messages.includes('补充成功')) {
+                    return 'table-success';
+                } else if (info.messages.includes('找不到')) {
+                    return 'table-danger';
+                } else {
+                    return '';
+                }
+            },
+
+            // 查询产品线信息
+            async search() {
+                // 重置消息和结果
+                this.loading = true;
+                ;
+                ;
+                this.list = [];
+
+                // 验证输入
+                if (!this.fcuIdString.trim()) {
+                    this.loading = false;
+                    this.showError("请输入FCU ID");
+                    return;
+                }
+
+                // 处理FCU ID列表
+                let fcuIdList = this.fcuIdString.split("\n")
+                    .map(fcu => fcu.trim())
+                    .filter(fcu => fcu); // 过滤空字符串
+
+                // 去重
+                fcuIdList = [...new Set(fcuIdList)];
+
+                if (fcuIdList.length === 0) {
+                    this.loading = false;
+                    this.showError("FCU ID列表不能为空");
+                    return;
+                }
+
+                if (fcuIdList.length > 5000) {
+                    this.loading = false;
+                    this.showError("FCU查询过多，请不要超过5000个");
+                    return;
+                }
+
+                const data = {
+                    action: "fixFcuProductLine",
+                    params: {
+                        fcuIdList: fcuIdList
+                    }
+                };
+
+                try {
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    this.loading = false;
+
+                    if (res.status === 200) {
+                        this.list = res.data.data || [];
+
+                        if (this.list.length === 0) {
+                            this.showError("没有找到相关数据");
+                        }
+                    } else {
+                        this.showError("查询失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("查询错误:", error);
+                }
+            },
+
+            // 补充产品线
+            async update() {
+                if (this.list.length === 0) {
+                    this.showError("请先查询数据");
+                    return;
+                }
+
+                // 获取需要补充的FCU列表
+                const fcuIdsToProcess = this.list
+                    .filter(item => item.messages.includes('找不到'))
+                    .map(item => item.fcuId);
+
+                if (fcuIdsToProcess.length === 0) {
+                    this.showError("没有需要补充的产品线数据");
+                    return;
+                }
+
+                // 重置状态
+                this.loading = false;
+                ;
+                ;
+                this.showResults = false;
+                this.updateResults = [];
+
+                // 显示进度条
+                this.showProgress = true;
+                this.progressPercentage = 0;
+                this.progressText = "准备补充产品线数据...";
+
+                const data = {
+                    action: "fixFcuProductLine",
+                    params: {
+                        fcuIdList: fcuIdsToProcess
+                    }
+                };
+
+                try {
+                    this.progressText = "正在补充产品线数据...";
+                    this.progressPercentage = 50;
+
+                    let res = await axios.post(`${this.url}/update.php`, data, this.header);
+                    
+                    this.progressPercentage = 100;
+                    this.showProgress = false;
+
+                    if (res.status === 200) {
+                        const results = res.data.data || [];
+                        
+                        // 分析结果
+                        const successCount = results.filter(r => r.messages.includes('补充成功') || r.messages.includes('已存在')).length;
+                        const failCount = results.length - successCount;
+                        
+                        // 更新本地列表
+                        results.forEach(result => {
+                            const index = this.list.findIndex(item => item.fcuId === result.fcuId);
+                            if (index !== -1) {
+                                this.list[index] = result;
+                            }
+                        });
+
+                        // 显示结果
+                        this.showUpdateResults(results, successCount, failCount);
+                    } else {
+                        this.showError("更新失败，请重试");
+                    }
+                } catch (error) {
+                    this.showProgress = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("更新错误:", error);
+                }
+            },
+
+            // 显示更新结果
+            showUpdateResults(results, successCount, failCount) {
+                this.showResults = true;
+                this.resultsCollapsed = false;
+
+                if (successCount > 0 && failCount === 0) {
+                    this.resultSummary = `全部补充成功：共 ${successCount} 个FCU`;
+                    this.resultHeaderClass = 'result-header-success';
+                    this.showSuccess(this.resultSummary);
+                } else if (successCount > 0 && failCount > 0) {
+                    this.resultSummary = `部分补充成功：成功 ${successCount} 个FCU，失败 ${failCount} 个FCU`;
+                    this.resultHeaderClass = 'result-header-partial';
+                    this.showWarning(this.resultSummary);
+                } else {
+                    this.resultSummary = `全部补充失败：共 ${failCount} 个FCU`;
+                    this.resultHeaderClass = 'result-header-error';
+                    this.showError(this.resultSummary);
+                }
+
+                // 构建详细结果列表
+                this.updateResults = results.map(result => ({
+                    fcuId: result.fcuId,
+                    status: result.messages.includes('补充成功') || result.messages.includes('已存在') ? 'success' : 'error',
+                    message: `${result.fcuId}: ${result.messages}`
+                }));
+            },
+
+            // 切换结果显示/隐藏
+            toggleResults() {
+                this.resultsCollapsed = !this.resultsCollapsed;
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

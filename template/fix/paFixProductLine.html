@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PA sku产品线查询和新增</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="../css_js/script/vue.global.js"></script>
+    <script src="../css_js/script/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px 0;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 6px;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 8px 0;
+            font-weight: bold;
+        }
+        .alert-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- 页面标题和环境信息 -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2>{{ message }}</h2>
+            <p class="text-muted">当前环境：<span :class="envClass">{{ envMsg }}</span></p>
+        </div>
+    </div>
+
+    <!-- 查询卡片 -->
+    <div class="card">
+        <div class="card-header">
+            产品线查询
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="skuSearchInput" class="form-label fw-bold">SKU ID列表</label>
+                    <textarea v-model="skuIdString" id="skuSearchInput" class="form-control" placeholder="请输入SKU ID，多个请换行" rows="5"></textarea>
+                    <div class="form-text">系统会自动去除空行和重复的SKU ID</div>
+                </div>
+                <div class="col-md-4 mb-3 d-flex flex-column">
+                    <label class="form-label fw-bold invisible">查询按钮</label>
+                    <button @click="search" class="btn btn-primary btn-action">
+                        <i class="bi bi-search"></i> 查询产品线
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查询结果卡片 -->
+    <div v-if="list && list.length > 0" class="card">
+        <div class="card-header">
+            查询结果
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th scope="col">SKU</th>
+                        <th scope="col">垂直</th>
+                        <th scope="col">产品线名称</th>
+                        <th scope="col">资料运营</th>
+                        <th scope="col">创建人</th>
+                        <th scope="col">创建日期</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="info in list" :key="info.id">
+                        <td>{{info.skuId}}</td>
+                        <td>
+                            <b style="color: red">{{info.verticalName}}</b>
+                        </td>
+                        <td>
+                            <b style="color: red">{{info.productLineName}}</b>
+                        </td>
+                        <td>{{info.userName}}</td>
+                        <td>{{info.createdBy}}</td>
+                        <td>{{info.createdOn}}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增SKU卡片 -->
+    <div class="card">
+        <div class="card-header">
+            产品线新增SKU
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <label for="skuAddInput" class="form-label fw-bold">SKU ID列表</label>
+                    <textarea v-model="addSkuIdString" id="skuAddInput" class="form-control" placeholder="请输入需要新增的SKU ID，多个请换行" rows="5"></textarea>
+                    <div class="form-text">系统会自动去除空行和重复的SKU ID，最多支持500个SKU</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <button @click="update" class="btn btn-primary btn-action">
+                        <i class="bi bi-plus-circle"></i> 添加SKU
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Toast通知容器 -->
+    <div class="toast-container">
+        <div v-for="(toast, index) in toasts" 
+             :key="toast.id" 
+             :class="['toast-notification', toast.type, { closing: toast.closing }]">
+            <i class="toast-icon bi" :class="{
+                'bi-check-circle-fill': toast.type === 'success',
+                'bi-exclamation-triangle-fill': toast.type === 'error',
+                'bi-info-circle-fill': toast.type === 'info',
+                'bi-exclamation-circle-fill': toast.type === 'warning'
+            }"></i>
+            <div class="toast-content">{{ toast.message }}</div>
+            <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+        </div>
+    </div>
+</div>
+
+<script src="../css_js/own/lizi.js"></script>
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            this.initPage();
+            return {
+                message: 'PA sku产品线查询和新增',
+                skuIdString: '',
+                addSkuIdString: '',
+                list: [],
+                loading: false,
+                env: "",
+                envMsg: "",
+                envClass: "",
+                url: "http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            }
+        },
+
+        methods: {
+            // 初始化页面，获取环境信息
+            async initPage() {
+                const data = {
+                    action: "paFixProductLine",
+                    params: {}
+                };
+
+                try {
+                    this.url = "http://172.16.29.23:90/php/controller";
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    if (res.status === 200) {
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                    }
+                } catch (error) {
+                    this.showError("初始化失败，无法获取环境信息");
+                    console.error("初始化错误:", error);
+                }
+            },
+
+            // 设置环境信息显示
+            setEnvMessage() {
+                switch(this.env) {
+                    case 'test':
+                        this.envMsg = 'Test环境';
+                        this.envClass = 'text-warning';
+                        break;
+                    case 'local':
+                        this.envMsg = '开发环境';
+                        this.envClass = 'text-info';
+                        break;
+                    case 'uat':
+                        this.envMsg = 'UAT环境';
+                        this.envClass = 'text-primary';
+                        break;
+                    default:
+                        this.envMsg = '生产环境';
+                        this.envClass = 'text-danger';
+                }
+            },
+
+            // 更新产品线SKU
+            async update() {
+                // 重置消息
+                this.loading = true;
+                ;
+                ;
+
+                // 验证输入
+                if (!this.addSkuIdString.trim()) {
+                    this.loading = false;
+                    this.showError("请输入SKU ID");
+                    return;
+                }
+
+                // 处理SKU ID列表
+                let addskuIdList = this.addSkuIdString.split("\n")
+                    .map(sku => sku.trim())
+                    .filter(sku => sku); // 过滤空字符串
+
+                // 去重
+                addskuIdList = [...new Set(addskuIdList)];
+
+                // 验证数量限制
+                if (addskuIdList.length > 500) {
+                    this.loading = false;
+                    this.showError("SKU添加过多，请不要超过500个");
+                    return;
+                }
+
+                // 构造请求数据
+                const data = {
+                    action: "paFixProductLine",
+                    params: {
+                        skuIdList: addskuIdList
+                    }
+                };
+
+                try {
+                    // 调用接口
+                    let res = await axios.post(`${this.url}/update.php`, data, this.header);
+                    console.log(res.data)
+                    this.loading = false;
+                    if (res.status === 200 && res.data && res.data.updateSuccess) {
+                        this.showSuccess("SKU添加成功，可以刷新查看结果");
+                        // 清空输入框
+                        this.addSkuIdString = "";
+                    } else {
+                        this.showError("添加失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("添加错误:", error);
+                }
+            },
+
+            // 查询产品线
+            async search() {
+                // 重置消息
+                this.loading = true;
+                ;
+                ;
+                this.list = [];
+
+                // 验证输入
+                if (!this.skuIdString.trim()) {
+                    this.loading = false;
+                    this.showError("请输入SKU ID");
+                    return;
+                }
+
+                // 处理SKU ID列表
+                let skuIdList = this.skuIdString.split("\n")
+                    .map(sku => sku.trim())
+                    .filter(sku => sku); // 过滤空字符串
+
+                // 去重
+                skuIdList = [...new Set(skuIdList)];
+
+                // 验证数量限制
+                if (skuIdList.length > 500) {
+                    this.loading = false;
+                    this.showError("SKU查询过多，请不要超过500个");
+                    return;
+                }
+
+                // 构造请求数据
+                const data = {
+                    action: "paFixProductLine",
+                    params: {
+                        skuIdList: skuIdList
+                    }
+                };
+
+                try {
+                    // 调用接口
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    
+                    this.loading = false;
+                    if (res.status === 200) {
+                        this.list = res.data.data;
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                        
+                        if (this.list.length === 0) {
+                            this.showError("不存在这些SKU的产品线信息");
+                        }
+                    } else {
+                        this.showError("查询失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("查询错误:", error);
+                }
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

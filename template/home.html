@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>临时数据修复系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.3.0/dist/axios.min.js"></script>
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="css_js/own/lizi.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1e293b;
+            --light-color: #f8fafc;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* 响应式设计 */
+
+
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 16px 16px 0 0;
+            padding: 16px 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border-bottom: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .card:hover .card-header::before {
+            left: 100%;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .feature-item {
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+
+        .feature-item:last-child {
+            border-bottom: none;
+        }
+
+        .feature-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .feature-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            color: var(--dark-color);
+            font-size: 1rem;
+        }
+
+        .feature-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+        }
+
+        .badge-new {
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            color: white;
+        }
+
+        .badge-pending {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+            z-index: -1;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .env-indicator {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .env-production {
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            color: white;
+        }
+
+        .env-test {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            color: white;
+        }
+
+        .env-uat {
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            color: white;
+        }
+
+        .env-dev {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            color: white;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 20px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .search-input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .search-input:focus {
+            outline: none;
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 1.2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            opacity: 0.8;
+            font-size: 1.1rem;
+        }
+
+        /* 顶部标题栏 */
+        .header-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .header-content h1 {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header-right {
+            flex: 0 0 auto;
+        }
+
+        .header-content h1 {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .header-right .version {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* 主要内容区域 */
+        .main-content {
+            padding: 24px 0;
+            min-height: calc(100vh - 120px);
+        }
+
+        .content-layout {
+            display: flex;
+            justify-content: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .main-panel {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding: 24px 0;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.875rem;
+            background: rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+
+            .header-content {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            .header-content h1 {
+                font-size: 1.4rem;
+            }
+
+            .header-right {
+                justify-content: center;
+            }
+
+            .card {
+                margin-bottom: 16px;
+            }
+
+            .feature-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .feature-info {
+                width: 100%;
+            }
+
+            .btn-primary {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                padding: 0 16px;
+            }
+
+            .header-bar {
+                padding: 12px 0;
+            }
+
+            .header-content h1 {
+                font-size: 1.2rem;
+            }
+
+            .main-content {
+                padding: 16px 0;
+            }
+
+            .card-body {
+                padding: 16px;
+            }
+
+            .feature-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+
+            .stat-number {
+                font-size: 2rem;
+            }
+
+            .footer {
+                padding: 16px 0;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- 顶部标题栏 -->
+    <div class="header-bar">
+        <div class="container">
+            <div class="header-content">
+                <h1>{{ message }}</h1>
+                <div class="header-right">
+                    <div class="version">当前版本：v.1.4</div>
+                    <span class="env-indicator" :class="`env-${envType}`">
+                            {{ envText }}
+                        </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主要内容区域 -->
+    <div class="main-content">
+        <div class="container">
+            <div class="content-layout">
+                <!-- 功能面板 -->
+                <div class="main-panel">
+                    <!-- 搜索框 -->
+                    <div class="search-container">
+                        <input
+                                type="text"
+                                v-model="searchQuery"
+                                class="search-input"
+                                placeholder="搜索功能..."
+                                @input="filterList"
+                        >
+                        <i class="fa fa-search search-icon"></i>
+                    </div>
+
+                    <!-- 功能列表 -->
+                    <div v-if="filteredList.length > 0" class="card">
+                        <div class="card-header">
+                            <i class="fa fa-cogs mr-2"></i> 可用功能
+                            <span class="badge bg-white text-primary rounded-full px-3 py-1 text-xs" style="float: right;">
+                                    {{ filteredList.length }} 个功能
+                                </span>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="feature-list">
+                                <li
+                                        v-for="(info, index) in filteredList"
+                                        :key="info.title"
+                                        class="feature-item"
+                                        :style="{ animationDelay: `${index * 0.1}s` }"
+                                >
+                                    <div class="feature-info">
+                                        <div class="feature-icon" :style="{ background: getIconBackground(info.title) }">
+                                            <i :class="getIconClass(info.title)"></i>
+                                        </div>
+                                        <div>
+                                                <span class="feature-title">
+                                                    {{ info.title }}
+                                                    <span v-if="info.level == 2" class="feature-badge badge-new">新增</span>
+                                                    <span v-if="info.level == 3" class="feature-badge badge-pending">待做</span>
+                                                </span>
+                                        </div>
+                                    </div>
+                                    <a
+                                            v-if="info.level != 3"
+                                            :href="info.url"
+                                            target="_blank"
+                                            class="btn btn-primary"
+                                            :class="{ 'disabled': loading }"
+                                            :id="'btn-' + info.title"
+                                    >
+                                        <i class="fa fa-external-link mr-2"></i> 进入
+                                    </a>
+                                    <button
+                                            v-else
+                                            class="btn btn-secondary"
+                                            disabled
+                                    >
+                                        <i class="fa fa-clock-o mr-2"></i> 开发中
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 空状态 - 只在搜索后显示 -->
+                    <div v-else-if="!loading && searchQuery.trim() !== ''" class="empty-state">
+                        <i class="fa fa-search"></i>
+                        <h3>未找到相关功能</h3>
+                        <p>请尝试其他搜索关键词</p>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div v-if="loading" class="empty-state">
+                        <i class="fa fa-spinner fa-spin" style="font-size: 3rem;"></i>
+                        <h3>正在加载功能列表</h3>
+                        <p class="loading">{{ loading }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 页脚 -->
+    <div class="footer">
+        <p>&copy; 2026 临时数据修复系统 - 为数据管理提供便捷工具</p>
+    </div>
+</div>
+
+<script src="css_js/own/lizi.js"></script>
+<script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+        data() {
+            return {
+                message: '临时数据修复系统',
+                list: [
+                    {
+                        title: '修改翻译状态',
+                        level: 1,
+                        url: 'fix/fixTranslationManagements.html'
+                    },
+                    {
+                        title: 'PA&小语种 恢复币种不一致SKU',
+                        level: 1,
+                        url: 'fix/fixCurrency.html'
+                    },
+                    {
+                        title: 'FBA海外仓上架前移库申请渠道仓库配置',
+                        level: 1,
+                        url: 'fix/paFbaChannelSellerConfig.html'
+                    },
+                    {
+                        title: '恢复CE资料呈现为已发布',
+                        level: 1,
+                        url: 'fix/fixCeMaterials.html'
+                    },
+                    {
+                        title: 'sku预计留样标识查询或新增',
+                        level: 1,
+                        url: 'fix/paSampleSku.html'
+                    },
+                    {
+                        title: 'sku产品线查询和新增',
+                        level: 1,
+                        url: 'fix/paFixProductLine.html'
+                    },
+                    {
+                        title: 'IP地址查询',
+                        level: 1,
+                        url: 'fix/registerIp.html'
+                    },
+                    {
+                        title: 'PA fcu产品线查询和补充',
+                        level: 1,
+                        url: 'fix/fixFcuProductLine.html'
+                    },
+                    {
+                        title: '修补SKU拍摄进度',
+                        level: 1,
+                        url: 'fix/skuPhotoFix.html'
+                    }
+                ],
+                searchQuery: '',
+                loading: '',
+                envType: 'production',
+                envText: '生产环境',
+                baseUrl: 'fix'
+            };
+        },
+
+        computed: {
+            filteredList() {
+                if (!this.searchQuery.trim()) {
+                    return this.list;
+                }
+
+                const query = this.searchQuery.toLowerCase().trim();
+                return this.list.filter(item =>
+                    item.title.toLowerCase().includes(query)
+                );
+            },
+
+
+        },
+
+        mounted() {
+            this.initApp();
+        },
+
+        methods: {
+            async initApp() {
+                this.loading = '正在初始化应用...';
+
+                try {
+                    // 模拟环境检测
+                    await this.detectEnvironment();
+
+                    // 模拟加载延迟
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    this.loading = '';
+                } catch (error) {
+                    console.error('初始化失败:', error);
+                    this.loading = '';
+                }
+            },
+
+            async detectEnvironment() {
+                // 模拟环境检测逻辑
+                const hostname = window.location.hostname;
+
+                if (hostname.includes('test') || hostname.includes('dev')) {
+                    this.envType = 'test';
+                    this.envText = '测试环境';
+                } else if (hostname.includes('uat')) {
+                    this.envType = 'uat';
+                    this.envText = 'UAT环境';
+                } else if (hostname.includes('localhost') || hostname === '127.0.0.1') {
+                    this.envType = 'dev';
+                    this.envText = '开发环境';
+                } else {
+                    this.envType = 'production';
+                    this.envText = '生产环境';
+                }
+            },
+
+            getIconBackground(title) {
+                const colors = [
+                    'linear-gradient(135deg, #667eea, #764ba2)',
+                    'linear-gradient(135deg, #f093fb, #f5576c)',
+                    'linear-gradient(135deg, #4facfe, #00f2fe)',
+                    'linear-gradient(135deg, #43e97b, #38f9d7)',
+                    'linear-gradient(135deg, #fa709a, #fee140)',
+                    'linear-gradient(135deg, #a8edea, #fed6e3)',
+                    'linear-gradient(135deg, #ff9a9e, #fecfef)',
+                    'linear-gradient(135deg, #ffecd2, #fcb69f)',
+                    'linear-gradient(135deg, #84fab0, #8fd3f4)',
+                    'linear-gradient(135deg, #fccb90, #d57eeb)'
+                ];
+
+                const index = title.charCodeAt(0) % colors.length;
+                return colors[index];
+            },
+
+            getIconClass(title) {
+                const iconMap = {
+                    '修改': 'fa-pencil',
+                    'FBA': 'fa-ship',
+                    '恢复': 'fa-refresh',
+                    'sku': 'fa-barcode',
+                    '上传': 'fa-upload',
+                    '登记': 'fa-register',
+                    '查询': 'fa-search',
+                    '修补': 'fa-wrench',
+                    '批量': 'fa-bulk',
+                    '导出': 'fa-download'
+                };
+
+                for (const [key, icon] of Object.entries(iconMap)) {
+                    if (title.includes(key)) {
+                        return `fa ${icon}`;
+                    }
+                }
+
+                return 'fa-cog';
+            },
+
+
+            filterList() {
+                // 搜索过滤逻辑已在computed中实现
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

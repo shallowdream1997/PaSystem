@@ -1,0 +1,133 @@
+/**
+ * Toast通知样式
+ * 右上角弹出式通知
+ */
+
+/* Toast容器 */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    min-width: 300px;
+    max-width: 400px;
+}
+
+/* Toast通知卡片 */
+.toast-notification {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin-bottom: 10px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    animation: slideInRight 0.3s ease-out;
+}
+
+/* 滑入动画 */
+@keyframes slideInRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 关闭时的滑出动画 */
+.toast-notification.closing {
+    animation: slideOutRight 0.3s ease-out;
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+/* 不同类型的Toast样式 */
+.toast-notification.success {
+    border-left: 4px solid #28a745;
+}
+
+.toast-notification.error {
+    border-left: 4px solid #dc3545;
+}
+
+.toast-notification.info {
+    border-left: 4px solid #17a2b8;
+}
+
+.toast-notification.warning {
+    border-left: 4px solid #ffc107;
+}
+
+/* Toast图标 */
+.toast-icon {
+    font-size: 24px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.toast-notification.success .toast-icon {
+    color: #28a745;
+}
+
+.toast-notification.error .toast-icon {
+    color: #dc3545;
+}
+
+.toast-notification.info .toast-icon {
+    color: #17a2b8;
+}
+
+.toast-notification.warning .toast-icon {
+    color: #ffc107;
+}
+
+/* Toast内容 */
+.toast-content {
+    flex: 1;
+    word-wrap: break-word;
+    color: #333;
+}
+
+/* Toast关闭按钮 */
+.toast-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 10px;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.toast-close:hover {
+    color: #333;
+}
+
+/* 响应式设计 */
+@media (max-width: 576px) {
+    .toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+    
+    .toast-notification {
+        padding: 12px 16px;
+    }
+}

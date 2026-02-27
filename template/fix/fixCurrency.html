@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PA&小语种 修复币种不一致SKU</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="../css_js/script/vue.global.js"></script>
+    <script src="../css_js/script/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <link rel="stylesheet" href="../css_js/bootstrap-5.3.0/css/bootstrap-icons.min.css">
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px 0;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 6px;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 8px 0;
+            font-weight: bold;
+        }
+        .alert-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .env-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .env-test { background-color: #ffc107; color: #212529; }
+        .env-local { background-color: #17a2b8; color: white; }
+        .env-uat { background-color: #0d6efd; color: white; }
+        .env-prod { background-color: #dc3545; color: white; }
+        .currency-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .currency-primary { background-color: #0d6efd; color: white; }
+        .currency-secondary { background-color: #6c757d; color: white; }
+        .currency-conflict { background-color: #dc3545; color: white; }
+        .channel-checkbox {
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+        .channel-group {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+        }
+        .progress-container {
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        .progress {
+            height: 20px;
+            border-radius: 10px;
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        .result-container {
+            margin-top: 20px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .result-header {
+            padding: 10px 15px;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-header-success {
+            background-color: #198754;
+        }
+        .result-header-partial {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .result-header-error {
+            background-color: #dc3545;
+        }
+        .result-body {
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-top: none;
+        }
+        .result-item {
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .result-item-success {
+            background-color: #d1e7dd;
+            border-left: 4px solid #198754;
+        }
+        .result-item-error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .result-summary {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .collapse-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+        .collapse-btn:hover {
+            opacity: 0.8;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- 页面标题和环境信息 -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2>{{ message }}</h2>
+            <p class="text-muted">当前环境：<span :class="`env-badge ${envClass}`">{{ envMsg }}</span></p>
+        </div>
+    </div>
+
+    <!-- 查询条件卡片 -->
+    <div class="card">
+        <div class="card-header">
+            查询条件
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="skuIdInput" class="form-label fw-bold">SKU ID列表</label>
+                    <textarea v-model="skuIdString" id="skuIdInput" class="form-control" placeholder="SKU ID,多个请换行" rows="4"></textarea>
+                    <div class="form-text">系统会自动去除空行和重复的SKU ID</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">选择渠道</label>
+                    <div class="channel-group">
+                        <div class="form-check channel-checkbox" v-for="option in channelOptions" :key="option.value">
+                            <input type="checkbox" :id="'channel-' + option.value" :value="option.value" v-model="selectedChannels" class="form-check-input">
+                            <label :for="'channel-' + option.value" class="form-check-label">{{ option.label }}</label>
+                        </div>
+                        <div class="form-check channel-checkbox">
+                            <input type="checkbox" id="channel-custom" value="custom" v-model="selectedChannels" class="form-check-input">
+                            <label for="channel-custom" class="form-check-label">自定义渠道</label>
+                        </div>
+                        <input v-if="selectedChannels.includes('custom')" type="text" v-model="customChannel" class="form-control mt-2" placeholder="输入自定义渠道名称">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <button @click="search" class="btn btn-primary btn-action">
+                        查询币种信息
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预览结果卡片 -->
+    <div v-if="previewList && previewList.length > 0" class="card">
+        <div class="card-header">
+            币种信息预览 <span class="text-sm text-white-500">(共 {{ previewList.length }} 条记录)</span>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th scope="col">
+                            <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="form-check-input">
+                            全选
+                        </th>
+                        <th scope="col">SKU</th>
+                        <th scope="col">渠道</th>
+                        <th scope="col">实际币种</th>
+                        <th scope="col">label</th>
+                        <th scope="col">value</th>
+                        <th scope="col">是否可删</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="item in previewList" :key="`${item.skuId}-${item.channel}`" :class="{ 'table-danger': item.value && item.value !== item.realCurrency }">
+                        <td>
+                            <input type="checkbox" :id="'item-' + item.id" :value="item" v-model="selectedItems" class="form-check-input" :disabled="!item.canDelete">
+                        </td>
+                        <td>{{ item.skuId }}</td>
+                        <td>{{ item.channel }}</td>
+                        <td><span class="currency-badge currency-secondary">{{ item.realCurrency }}</span></td>
+                        <td>
+                            <span class="currency-badge currency-primary">{{ item.label }}</span>
+                        </td>
+                        <td>
+                            <span :class="`currency-badge ${item.value && item.value !== item.realCurrency ? 'currency-conflict' : 'currency-secondary'}`">{{ item.value || '没有值' }}</span>
+                        </td>
+                        <td>
+                            <span v-if="item.canDelete" class="text-success">✓ 可删除</span>
+                            <span v-else class="text-danger">✗ 不可删除</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <button @click="deleteSelected" class="btn btn-danger btn-action" :disabled="selectedItems.length === 0">
+                        删除选中数据
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进度条 -->
+    <div v-if="showProgress" class="card">
+        <div class="card-body">
+            <div class="progress-container">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-sm font-weight-bold">{{ progressText }}</span>
+                    <span class="text-sm font-weight-bold">{{ progressPercentage }}%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" :style="{ width: progressPercentage + '%' }" :aria-valuenow="progressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 更新结果展示 -->
+    <div v-if="showResults" class="result-container" :class="{ 'hidden': resultsCollapsed }">
+        <div :class="`result-header ${resultHeaderClass}`">
+            <span>{{ resultSummary }}</span>
+            <button class="collapse-btn" @click="toggleResults">
+                <i :class="resultsCollapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
+            </button>
+        </div>
+        <div v-if="!resultsCollapsed" class="result-body">
+            <div class="result-summary">{{ resultSummary }}</div>
+            <div v-if="updateResults.length > 0">
+                <div v-for="(result, index) in updateResults" :key="index" :class="`result-item ${result.status === 'success' ? 'result-item-success' : 'result-item-error'}`">
+                    {{ result.message }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast通知容器 -->
+    <div class="toast-container">
+        <div v-for="(toast, index) in toasts" 
+             :key="toast.id" 
+             :class="['toast-notification', toast.type, { closing: toast.closing }]">
+            <i class="toast-icon bi" :class="{
+                'bi-check-circle-fill': toast.type === 'success',
+                'bi-exclamation-triangle-fill': toast.type === 'error',
+                'bi-info-circle-fill': toast.type === 'info',
+                'bi-exclamation-circle-fill': toast.type === 'warning'
+            }"></i>
+            <div class="toast-content">{{ toast.message }}</div>
+            <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            this.initPage();
+            return {
+                message: 'PA&小语种 修复币种不一致SKU',
+                skuIdString: '',
+                selectedChannels: [],
+                customChannel: '',
+                selectAll: false,
+                selectedItems: [],
+                previewList: [],
+                loading: false,
+                env: "",
+                envMsg: "",
+                envClass: "",
+                channelOptions: [
+                    { value: 'amazon_us', label: 'Amazon US' },
+                    { value: 'amazon_uk', label: 'Amazon UK' },
+                    { value: 'amazon_es', label: 'Amazon ES' },
+                    { value: 'amazon_ca', label: 'Amazon CA' },
+                    { value: 'amazon_it', label: 'Amazon IT' },
+                    { value: 'amazon_fr', label: 'Amazon FR' },
+                    { value: 'amazon_mx', label: 'Amazon MX' },
+                    { value: 'amazon_de', label: 'Amazon DE' },
+                    { value: 'amazon_jp', label: 'Amazon JP' },
+                    { value: 'amazon_au', label: 'Amazon AU' }
+                ],
+                url: "http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                },
+                // 新增进度和结果相关状态
+                showProgress: false,
+                progressText: '',
+                progressPercentage: 0,
+                showResults: false,
+                resultsCollapsed: false,
+                updateResults: [],
+                resultSummary: '',
+                resultHeaderClass: ''
+            }
+        },
+
+        methods: {
+            // 初始化页面，获取环境信息
+            async initPage() {
+                const data = {
+                    action: "fixCurrency",
+                    params: {}
+                };
+
+                try {
+                    this.url = "http://172.16.29.23:90/php/controller";
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    if (res.status === 200) {
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                    }
+                } catch (error) {
+                    this.showError("初始化失败，无法获取环境信息");
+                    console.error("初始化错误:", error);
+                }
+            },
+
+            // 设置环境信息显示
+            setEnvMessage() {
+                switch(this.env) {
+                    case 'test':
+                        this.envMsg = 'Test环境';
+                        this.envClass = 'env-test';
+                        break;
+                    case 'local':
+                        this.envMsg = '开发环境';
+                        this.envClass = 'env-local';
+                        break;
+                    case 'uat':
+                        this.envMsg = 'UAT环境';
+                        this.envClass = 'env-uat';
+                        break;
+                    default:
+                        this.envMsg = '生产环境';
+                        this.envClass = 'env-prod';
+                }
+            },
+
+            // 获取最终的渠道列表
+            getFinalChannels() {
+                let channels = [...this.selectedChannels];
+                if (channels.includes('custom') && this.customChannel.trim()) {
+                    channels = channels.filter(c => c !== 'custom');
+                    channels.push(this.customChannel.trim());
+                }
+                return channels;
+            },
+
+            // 查询币种信息
+            async search() {
+                // 重置消息和结果
+                this.loading = true;
+                this.previewList = [];
+                this.selectedItems = [];
+                this.selectAll = false;
+                this.showResults = false;
+                this.updateResults = [];
+
+                // 验证输入
+                if (!this.skuIdString.trim()) {
+                    this.loading = false;
+                    this.showError("请输入SKU ID");
+                    return;
+                }
+
+                // 处理SKU ID列表
+                let skuIdList = this.skuIdString.split("\n")
+                    .map(sku => sku.trim())
+                    .filter(sku => sku); // 过滤空字符串
+
+                // 去重
+                skuIdList = [...new Set(skuIdList)];
+
+                if (skuIdList.length === 0) {
+                    this.loading = false;
+                    this.showError("SKU ID列表不能为空");
+                    return;
+                }
+
+                if (skuIdList.length > 500) {
+                    this.loading = false;
+                    this.showError("SKU查询过多，请不要超过500个");
+                    return;
+                }
+
+                // 获取渠道列表
+                const channels = this.getFinalChannels();
+                if (channels.length === 0) {
+                    this.loading = false;
+                    this.showError("请至少选择一个渠道");
+                    return;
+                }
+
+                const data = {
+                    action: "fixCurrency",
+                    params: {
+                        skuIdList: skuIdList,
+                        channels: channels
+                    }
+                };
+
+                try {
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    this.loading = false;
+
+                    if (res.status === 200) {
+                        this.previewList = res.data.data || [];
+
+                        if (this.previewList.length === 0) {
+                            this.showInfo("没有找到相关数据");
+                        }
+                    } else {
+                        this.showError("查询失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("查询错误:", error);
+                }
+            },
+
+            // 全选/取消全选
+            toggleSelectAll() {
+                if (this.selectAll) {
+                    this.selectedItems = this.previewList.filter(item => item.canDelete);
+                    if (this.selectedItems.length === 0){
+                        this.showError("没有可删除的数据");
+                        this.selectAll = false;
+                    }
+                } else {
+                    this.selectedItems = [];
+                }
+            },
+
+            // 更新选中的数据
+            async deleteSelected() {
+                if (this.selectedItems.length === 0) {
+                    this.showError("请先选择要更新的数据");
+                    return;
+                }
+
+                // 筛选可更新的数据
+                const canUpdateItems = this.selectedItems.filter(item => item.canDelete);
+                if (canUpdateItems.length === 0) {
+                    this.showError("请选择可更新的数据");
+                    return;
+                }
+
+                // 重置状态
+                this.loading = false;                this.showResults = false;
+                this.updateResults = [];
+
+                // 显示进度条
+                this.showProgress = true;
+                this.progressPercentage = 0;
+                this.progressText = "准备更新数据...";
+
+                // 按SKU分组处理数据
+                const skuGroups = {};
+                canUpdateItems.forEach(item => {
+                    if (!skuGroups[item.skuId]) {
+                        skuGroups[item.skuId] = {};
+                    }
+                    if (!skuGroups[item.skuId][item.channel]) {
+                        skuGroups[item.skuId][item.channel] = [];
+                    }
+                    skuGroups[item.skuId][item.channel].push(item.label);
+                });
+
+                const totalSkus = Object.keys(skuGroups).length;
+                let currentSkuIndex = 0;
+                let successCount = 0;
+                let failCount = 0;
+
+                // 逐个SKU执行更新
+                for (const [skuId, channelData] of Object.entries(skuGroups)) {
+                    currentSkuIndex++;
+                    this.progressText = `正在更新第 ${currentSkuIndex}/${totalSkus} 个SKU: ${skuId}`;
+                    this.progressPercentage = Math.round((currentSkuIndex / totalSkus) * 100);
+
+                    const data = {
+                        action: "fixCurrency",
+                        params: {
+                            skuId: skuId,
+                            channelData: channelData
+                        }
+                    };
+
+                    try {
+                        let res = await axios.post(`${this.url}/update.php`, data, this.header);
+                        console.log(res.data)
+                        if (res.status === 200 && res.data.data.success) {
+                            successCount++;
+                            this.updateResults.push({
+                                skuId: skuId,
+                                status: 'success',
+                                message: `成功更新SKU: ${skuId}`
+                            });
+
+                            // 从预览列表中移除已更新的项目
+                            this.previewList = this.previewList.filter(item =>
+                                !(item.skuId === skuId && item.canDelete)
+                            );
+                        } else {
+                            failCount++;
+                            this.updateResults.push({
+                                skuId: skuId,
+                                status: 'error',
+                                message: `更新失败: ${skuId} - ${res.data.data.message || '未知错误'}`
+                            });
+                        }
+                    } catch (error) {
+                        failCount++;
+                        this.updateResults.push({
+                            skuId: skuId,
+                            status: 'error',
+                            message: `更新错误: ${skuId} - ${error.message}`
+                        });
+                    }
+
+                    // 短暂延迟，避免请求过快
+                    if (currentSkuIndex < totalSkus) {
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+                }
+
+                // 隐藏进度条
+                this.showProgress = false;
+
+                // 清空选中项
+                this.selectedItems = [];
+                this.selectAll = false;
+
+                // 显示详细结果
+                this.showUpdateResults(this.updateResults, successCount, failCount);
+
+                // 如果预览列表为空，清空相关状态
+                if (this.previewList.length === 0) {
+                    this.skuIdString = "";
+                    this.selectedChannels = [];
+                    this.customChannel = "";
+                }
+            },
+
+            // 显示更新结果
+            showUpdateResults(results, successCount, failCount) {
+                this.showResults = true;
+                this.resultsCollapsed = false;
+
+                if (successCount > 0 && failCount === 0) {
+                    this.resultSummary = `全部更新成功：共 ${successCount} 个SKU`;
+                    this.resultHeaderClass = 'result-header-success';
+                    this.showSuccess(this.resultSummary);
+                } else if (successCount > 0 && failCount > 0) {
+                    this.resultSummary = `部分更新成功：成功 ${successCount} 个SKU，失败 ${failCount} 个SKU`;
+                    this.resultHeaderClass = 'result-header-partial';
+                    this.showWarning(this.resultSummary);
+                } else {
+                    this.resultSummary = `全部更新失败：共 ${failCount} 个SKU`;
+                    this.resultHeaderClass = 'result-header-error';
+                    this.showError(this.resultSummary);
+                }
+            },
+
+            // 切换结果显示/隐藏
+            toggleResults() {
+                this.resultsCollapsed = !this.resultsCollapsed;
+            }
+        },
+
+        watch: {
+            // 监听选中项变化，更新全选状态
+            selectedItems(newVal) {
+                const canDeleteItems = this.previewList.filter(item => item.canDelete);
+                this.selectAll = canDeleteItems.length > 0 && newVal.length === canDeleteItems.length;
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

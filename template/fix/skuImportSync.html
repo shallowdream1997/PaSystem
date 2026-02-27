@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKU数据导入与同步</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <script src="https://unpkg.com/vue@3.2.47/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.staticfile.org/axios/0.18.0/axios.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px 0;
+        }
+        .main-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            background-color: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            background-color: #e3f2fd;
+            border-color: #0056b3;
+        }
+        .progress-container {
+            background-color: #e9f7ef;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .sync-progress {
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #e9ecef;
+            margin: 10px 0;
+        }
+        .progress-bar-custom {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #28a745);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending { background-color: #ffc107; color: #212529; }
+        .status-processing { background-color: #17a2b8; color: white; }
+        .status-success { background-color: #28a745; color: white; }
+        .status-error { background-color: #dc3545; color: white; }
+        .sync-item {
+            padding: 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #fff;
+        }
+        .sync-item.processing {
+            border-color: #17a2b8;
+            background-color: #f8f9fa;
+        }
+        .sync-item.success {
+            border-color: #28a745;
+            background-color: #f8fff9;
+        }
+        .sync-item.error {
+            border-color: #dc3545;
+            background-color: #fff5f5;
+        }
+        /* 同步详情列表滚动容器 */
+        .sync-details-container {
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 5px;
+        }
+        /* 自定义滚动条样式 */
+        .sync-details-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .sync-details-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .sync-details-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .sync-details-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Toast通知样式 */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 400px;
+        }
+        .toast-notification {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            animation: slideInRight 0.3s ease-out;
+        }
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .toast-notification.closing {
+            animation: slideOutRight 0.3s ease-out;
+        }
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+        .toast-notification.success {
+            border-left: 4px solid #28a745;
+        }
+        .toast-notification.error {
+            border-left: 4px solid #dc3545;
+        }
+        .toast-notification.info {
+            border-left: 4px solid #17a2b8;
+        }
+        .toast-icon {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+        .toast-notification.success .toast-icon {
+            color: #28a745;
+        }
+        .toast-notification.error .toast-icon {
+            color: #dc3545;
+        }
+        .toast-notification.info .toast-icon {
+            color: #17a2b8;
+        }
+        .toast-content {
+            flex: 1;
+        }
+        .toast-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+        }
+        .toast-close:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <!-- 页面标题 -->
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1 class="display-6">
+                    <i class="bi bi-box-seam text-primary"></i>
+                    SKU数据导入与同步
+                </h1>
+                <p class="text-muted">导入SKU数据并同步到各个平台模块</p>
+            </div>
+        </div>
+
+        <!-- 上传区域 -->
+        <div class="main-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-cloud-upload"></i> Excel文件上传</h5>
+            </div>
+            <div class="card-body">
+                <!-- 下载模板按钮 -->
+                <div class="mb-3">
+                    <button @click="downloadTemplate" class="btn btn-outline-primary">
+                        <i class="bi bi-download"></i> 下载导入模板
+                    </button>
+                    <span class="text-muted small ms-2">请先下载模板，按模板格式填写SKU数据</span>
+                </div>
+
+                <!-- 拖拽上传区域 -->
+                <div class="upload-area" 
+                     @drop.prevent="handleDrop"
+                     @dragover.prevent="handleDragOver"
+                     @dragleave.prevent="handleDragLeave"
+                     @click="triggerFileInput">
+                    <i class="bi bi-file-earmark-excel" style="font-size: 3rem; color: #28a745;"></i>
+                    <h4 class="mt-3">拖拽文件到此处或点击选择</h4>
+                    <p class="text-muted">支持 .xlsx 和 .xls 格式，第一列为SKU ID</p>
+                    <input type="file" 
+                           ref="fileInput" 
+                           @change="handleFileSelect" 
+                           accept=".xlsx,.xls" 
+                           style="display: none;">
+                </div>
+
+                <!-- 文件信息 -->
+                <div v-if="uploadedFile" class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>已选择文件：</strong> {{ uploadedFile.name }}
+                        <span class="badge bg-secondary ms-2">{{ formatFileSize(uploadedFile.size) }}</span>
+                        <span class="badge bg-success ms-2">{{ skuList.length }} 个SKU</span>
+                    </div>
+                </div>
+
+                <!-- 环境选择 -->
+                <div v-if="skuList.length > 0" class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label"><strong>选择目标环境</strong></label>
+                        <select class="form-select" v-model="targetEnv">
+                            <option value="test">Test环境</option>
+                            <option value="uat">UAT环境</option>
+                        </select>
+                        <div class="form-text">源环境固定为Production</div>
+                    </div>
+                </div>
+
+                <!-- 同步按钮 -->
+                <div v-if="skuList.length > 0" class="mt-3 text-center">
+                    <button @click="startSync" 
+                            :disabled="isSyncing" 
+                            class="btn btn-success btn-lg">
+                        <i class="bi bi-arrow-repeat" :class="{'spin': isSyncing}"></i>
+                        {{ isSyncing ? '同步中...' : '开始同步到' + targetEnv.toUpperCase() + '环境' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 同步进度 -->
+        <div v-if="isSyncing || syncResults.length > 0" class="main-card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-speedometer2"></i> 同步进度</h5>
+            </div>
+            <div class="card-body">
+                <!-- 总体进度 -->
+                <div class="progress-container">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span><strong>总体进度</strong></span>
+                        <span>{{ completedCount }}/{{ totalCount }} ({{ Math.round(completedCount/totalCount*100) }}%)</span>
+                    </div>
+                    <div class="sync-progress">
+                        <div class="progress-bar-custom" :style="{ width: (completedCount/totalCount*100) + '%' }">
+                            {{ Math.round(completedCount/totalCount*100) }}%
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>待处理: {{ pendingCount }}</span>
+                        <span>处理中: {{ processingCount }}</span>
+                        <span>成功: {{ successCount }}</span>
+                        <span>失败: {{ errorCount }}</span>
+                    </div>
+                </div>
+
+                <!-- 详细进度列表 -->
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">同步详情</h6>
+                        <span class="text-muted small">
+                            <i class="bi bi-info-circle"></i> 
+                            最多显示最近的同步记录，可滚动查看
+                        </span>
+                    </div>
+                    <div class="sync-details-container">
+                        <div class="sync-item" 
+                             v-for="(item, index) in syncResults" 
+                             :key="index"
+                             :class="item.status">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-secondary me-2">#{{ index + 1 }}</span>
+                                    <strong>{{ item.skuId }}</strong>
+                                    <span class="ms-3">{{ item.module }} ({{ item.port }})</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="status-badge" :class="'status-' + item.status">
+                                        {{ getStatusText(item.status) }}
+                                    </span>
+                                    <span v-if="item.message" class="text-muted small ms-2">
+                                        {{ item.message }}
+                                    </span>
+                                    <span v-if="item.progress" class="text-muted small ms-2">
+                                        {{ item.progress }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast通知容器 -->
+        <div class="toast-container">
+            <div v-for="(toast, index) in toasts" 
+                 :key="toast.id" 
+                 :class="['toast-notification', toast.type, { closing: toast.closing }]">
+                <i class="toast-icon bi" :class="{
+                    'bi-check-circle-fill': toast.type === 'success',
+                    'bi-exclamation-triangle-fill': toast.type === 'error',
+                    'bi-info-circle-fill': toast.type === 'info'
+                }"></i>
+                <div class="toast-content">{{ toast.message }}</div>
+                <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            mixins: [ToastMixin],
+            data() {
+                return {
+                    uploadedFile: null,
+                    skuList: [],
+                    targetEnv: 'test', // 默认目标环境
+                    isSyncing: false,
+                    syncResults: [],
+                    apiUrl: 'http://172.16.29.23:90/php/controller/skuImportSync.php'
+                }
+            },
+
+            computed: {
+                totalCount() {
+                    return this.syncResults.length;
+                },
+                completedCount() {
+                    return this.syncResults.filter(item => item.status === 'success' || item.status === 'error').length;
+                },
+                pendingCount() {
+                    return this.syncResults.filter(item => item.status === 'pending').length;
+                },
+                processingCount() {
+                    return this.syncResults.filter(item => item.status === 'processing').length;
+                },
+                successCount() {
+                    return this.syncResults.filter(item => item.status === 'success').length;
+                },
+                errorCount() {
+                    return this.syncResults.filter(item => item.status === 'error').length;
+                }
+            },
+
+            methods: {
+                // 下载模板
+                downloadTemplate() {
+                    window.location.href = this.apiUrl + '?action=downloadTemplate';
+                },
+
+                // 触发文件选择
+                triggerFileInput() {
+                    this.$refs.fileInput.click();
+                },
+
+                // 处理文件选择
+                async handleFileSelect(event) {
+                    const files = Array.from(event.target.files);
+                    if (files.length > 0) {
+                        await this.processFile(files[0]);
+                    }
+                },
+
+                // 处理拖拽上传
+                async handleDrop(event) {
+                    event.currentTarget.classList.remove('dragover');
+                    const files = Array.from(event.dataTransfer.files);
+                    if (files.length > 0) {
+                        await this.processFile(files[0]);
+                    }
+                },
+
+                handleDragOver(event) {
+                    event.currentTarget.classList.add('dragover');
+                },
+
+                handleDragLeave(event) {
+                    event.currentTarget.classList.remove('dragover');
+                },
+
+                // 处理上传的文件
+                async processFile(file) {
+                    // 检查文件大小（限制为2MB，因为PHP配置限制）
+                    const maxSize = 2 * 1024 * 1024; // 2MB
+                    if (file.size > maxSize) {
+                        this.showError(`文件大小超过限制（最大2MB），当前文件大小：${this.formatFileSize(file.size)}`);
+                        return;
+                    }
+                    
+                    this.uploadedFile = file;
+                    this.skuList = [];
+                    this.syncResults = [];
+
+                    const formData = new FormData();
+                    formData.append('excelFile', file);
+                    formData.append('action', 'parse');
+
+                    try {
+                        const response = await axios.post(this.apiUrl, formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+
+                        if (response.data.success) {
+                            this.skuList = response.data.data.skuList;
+                            this.showSuccess(`成功解析 ${this.skuList.length} 个SKU`);
+                        } else {
+                            this.showError(response.data.message);
+                        }
+                    } catch (error) {
+                        this.showError('文件解析失败: ' + (error.response?.data?.message || error.message));
+                    }
+                },
+
+                // 开始同步
+                async startSync() {
+                    if (this.skuList.length === 0) {
+                        this.showError('请先上传包含SKU数据的Excel文件');
+                        return;
+                    }
+
+                    this.isSyncing = true;
+                    this.syncResults = [];
+
+                    // 初始化同步任务
+                    const syncModules = [
+                        { module: "amazon_asins", port: "s3015", field: "skuId" },
+                        { module: "amazon-active-listings", port: "s3015", field: "skuId" },
+                        { module: "walmart-active-listing-news", port: "s3015", field: "skuId" },
+                        { module: "ebay-active-listings", port: "s3015", field: "skuId" },
+                        { module: "channel_sku_images", port: "s3015", field: "skuId" },
+                        { module: "channel-prices", port: "s3015", field: "productId" },
+                        { module: "product-skus", port: "s3015", field: "productId" },
+                        { module: "product_base_infos", port: "s3015", field: "productId" },
+                        { module: "pid-scu-maps", port: "s3015", field: "productId" },
+                        { module: "sku-images", port: "s3015", field: "skuId" },
+                        { module: "sku-sale-statuses", port: "s3015", field: "skuId" },
+                        { module: "sku-seller-configs", port: "s3015", field: "skuId" },
+                        { module: "sgu-sku-scu-maps", port: "s3015", field: "skuScuId" },
+                        { module: "sgu-sku-scu-maps", port: "s3015", field: "sguId" },
+                        { module: "sgu_sku_scu_channel_maps", port: "s3015", field: "skuScuId" },
+                        { module: "sku_prices", port: "s3015", field: "skuId" },
+                        { module: "scu-sku-maps", port: "s3015", field: "skuIdListName" },
+                        { module: "pa_sku_infos", port: "s3015", field: "skuId" },
+                        { module: "product_fba_bases", port: "s3015", field: "skuId" }
+                    ];
+
+                    // 为每个SKU和每个模块创建同步任务
+                    this.skuList.forEach(skuId => {
+                        syncModules.forEach(moduleInfo => {
+                            this.syncResults.push({
+                                skuId: skuId,
+                                module: moduleInfo.module,
+                                port: moduleInfo.port,
+                                field: moduleInfo.field,
+                                status: 'pending',
+                                message: '',
+                                progress: ''
+                            });
+                        });
+                    });
+
+                    // 开始逐个同步
+                    await this.executeSync();
+                },
+
+                // 执行同步
+                async executeSync() {
+                    for (let i = 0; i < this.syncResults.length; i++) {
+                        const item = this.syncResults[i];
+                        
+                        // 更新状态为处理中
+                        item.status = 'processing';
+                        item.message = '正在同步到' + this.targetEnv + '环境...';
+                        
+                        try {
+                            const response = await axios.post(this.apiUrl, {
+                                action: 'sync',
+                                skuId: item.skuId,
+                                module: item.module,
+                                port: item.port,
+                                field: item.field,
+                                targetEnv: this.targetEnv // 传递目标环境
+                            }, {
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+
+                            if (response.data.success) {
+                                item.status = 'success';
+                                item.message = response.data.message;
+                                item.progress = '✓ 完成';
+                            } else {
+                                item.status = 'error';
+                                item.message = response.data.message;
+                                item.progress = '✗ 失败';
+                            }
+                        } catch (error) {
+                            item.status = 'error';
+                            item.message = '同步失败: ' + (error.response?.data?.message || error.message);
+                            item.progress = '✗ 错误';
+                        }
+
+                        // 短暂延迟以显示进度
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
+                    this.isSyncing = false;
+                    
+                    // 显示同步结果
+                    if (this.errorCount === 0) {
+                        this.showSuccess(`同步完成！所有 ${this.successCount} 个任务均成功`);
+                    } else if (this.successCount === 0) {
+                        this.showError(`同步失败！所有 ${this.errorCount} 个任务均失败`);
+                    } else {
+                        this.showInfo(`同步完成！成功: ${this.successCount}, 失败: ${this.errorCount}`);
+                    }
+                },
+
+                // 获取状态文本
+                getStatusText(status) {
+                    const statusMap = {
+                        'pending': '待处理',
+                        'processing': '处理中',
+                        'success': '成功',
+                        'error': '失败'
+                    };
+                    return statusMap[status] || status;
+                },
+
+                // 格式化文件大小
+                formatFileSize(bytes) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

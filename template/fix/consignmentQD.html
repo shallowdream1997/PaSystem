@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PA 寄卖商新QD单处理</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.staticfile.org/axios/0.18.0/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px 0;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 6px;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 8px 0;
+            font-weight: bold;
+        }
+        .status-text {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .alert-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .publish-options {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        .form-check {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- 页面标题和环境信息 -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2>{{ message }}</h2>
+            <p class="text-muted">当前环境：<span :class="envClass">{{ envMsg }}</span></p>
+        </div>
+    </div>
+
+    <!-- QD单处理卡片 -->
+    <div class="card">
+        <div class="card-header">
+            QD单状态处理
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- QD单输入区域 -->
+                <div class="col-md-8 mb-3">
+                    <label for="qdInput" class="form-label fw-bold">QD单号（多个请换行）</label>
+                    <textarea v-model="qdString" class="form-control" id="qdInput"
+                              placeholder="请输入QD单号，多个单号请换行" rows="6"></textarea>
+                    <div class="form-text">系统会自动去除空行和重复的QD单号</div>
+                </div>
+
+                <!-- 状态选择和执行按钮 -->
+                <div class="col-md-4 mb-3 d-flex flex-column">
+                    <label for="statusSelect" class="form-label fw-bold">处理状态</label>
+                    <select v-model="selectedStatus" id="statusSelect" class="form-select mb-4">
+                        <option value="">请选择处理状态</option>
+                        <option value="to发布">to发布</option>
+                        <option value="to待分配">to待分配</option>
+                        <option value="to处理分配">to处理分配</option>
+                    </select>
+
+                    <!-- 自动发布选项 - 仅当选择to发布时显示 -->
+                    <div v-if="selectedStatus === 'to发布'" class="publish-options">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" v-model="autoRePublish" id="autoRePublish">
+                            <label class="form-check-label" for="autoRePublish">
+                                是否自动重新发布
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" v-model="autoPublish" id="autoPublish">
+                            <label class="form-check-label" for="autoPublish">
+                                是否自动发布
+                            </label>
+                        </div>
+                    </div>
+
+                    <button @click="executeQdProcess" class="btn btn-primary btn-action mt-auto">
+                        <i class="bi bi-play-circle"></i> 执行处理
+                    </button>
+                </div>
+            </div>
+
+            <!-- Toast通知容器 -->
+            <div class="toast-container">
+                <div v-for="toast in toasts" 
+                     :key="toast.id" 
+                     :class="['toast-notification', toast.type, { closing: toast.closing }]">
+                    <i class="toast-icon bi" :class="{
+                        'bi-check-circle-fill': toast.type === 'success',
+                        'bi-exclamation-triangle-fill': toast.type === 'error',
+                        'bi-info-circle-fill': toast.type === 'info',
+                        'bi-exclamation-circle-fill': toast.type === 'warning'
+                    }"></i>
+                    <div class="toast-content">{{ toast.message }}</div>
+                    <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../css_js/own/lizi.js"></script>
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            this.initPage();
+            return {
+                message: 'PA 寄卖商新QD单处理',
+                // QD单处理相关
+                qdString: '',
+                selectedStatus: '',
+                // 自动发布相关选项
+                autoRePublish: false,
+                autoPublish: false,
+
+                // 消息提示
+                loading: false,
+
+                // 环境配置
+                env: "",
+                envMsg: "",
+                envClass: "",
+                url: "http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            }
+        },
+
+        methods: {
+            // 初始化页面，获取环境信息
+            async initPage() {
+                const data = {
+                    action: "consignmentQD",
+                    params: {}
+                };
+
+                try {
+                    this.url = "http://172.16.29.23:90/php/controller";
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    if (res.status === 200) {
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                    }
+                } catch (error) {
+                    this.showError("初始化失败，无法获取环境信息");
+                    console.error("初始化错误:", error);
+                }
+            },
+
+            // 设置环境信息显示
+            setEnvMessage() {
+                switch(this.env) {
+                    case 'test':
+                        this.envMsg = 'Test环境';
+                        this.envClass = 'text-warning';
+                        break;
+                    case 'local':
+                        this.envMsg = '开发环境';
+                        this.envClass = 'text-info';
+                        break;
+                    case 'uat':
+                        this.envMsg = 'UAT环境';
+                        this.envClass = 'text-primary';
+                        break;
+                    default:
+                        this.envMsg = '生产环境';
+                        this.envClass = 'text-danger';
+                }
+            },
+
+            // 执行QD单处理
+            async executeQdProcess() {
+                // 重置消息
+                this.loading = true;                // 验证输入
+                if (!this.qdString.trim()) {
+                    this.loading = false;
+                    this.showError("请输入QD单号");
+                    return;
+                }
+
+                if (!this.selectedStatus) {
+                    this.loading = false;
+                    this.showError("请选择处理状态");
+                    return;
+                }
+
+                // 处理QD单：去重、过滤空行
+                let qdList = this.qdString.split("\n")
+                    .map(qd => qd.trim())
+                    .filter(qd => qd); // 过滤空字符串
+
+                // 去重
+                qdList = [...new Set(qdList)];
+
+                if (qdList.length === 0) {
+                    this.loading = false;
+                    this.showError("未找到有效的QD单号");
+                    return;
+                }
+
+                // 构造请求数据
+                const data = {
+                    action: "consignmentQD",
+                    params: {
+                        qdList: qdList,
+                        status: this.selectedStatus,
+                        // 仅当选择to发布时才添加这两个参数
+                        ...(this.selectedStatus === 'to发布' && {
+                            autoRePublish: this.autoRePublish,
+                            autoPublish: this.autoPublish
+                        })
+                    }
+                };
+
+                try {
+                    // 调用接口
+                    let res = await axios.post(`${this.url}/update.php`, data, this.header);
+
+                    this.loading = false;
+                    console.log(res.data.data)
+                    if (res.status === 200 && res.data.data.data && res.data.data.data === true) {
+                        this.showSuccess("执行成功，请去清单列表查看数据");
+                    } else {
+                        this.showError(res.data.data.state.message || "处理失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("处理QD单错误:", error);
+                }
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

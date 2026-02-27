@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FBA海外仓上架前移库申请渠道仓库配置</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="../css_js/script/vue.global.js"></script>
+    <script src="../css_js/script/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px 0;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 6px;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 8px 0;
+            font-weight: bold;
+        }
+        .alert-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .env-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .env-test { background-color: #ffc107; color: #212529; }
+        .env-local { background-color: #17a2b8; color: white; }
+        .env-uat { background-color: #0d6efd; color: white; }
+        .env-prod { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- 页面标题和环境信息 -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2>{{ message }}</h2>
+            <p class="text-muted">当前环境：<span :class="`env-badge ${envClass}`">{{ envMsg }}</span></p>
+        </div>
+    </div>
+
+    <!-- 操作按钮卡片 -->
+    <div class="card">
+        <div class="card-header">
+            操作面板
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <button @click="search" class="btn btn-primary btn-action">
+                        <i class="bi bi-search"></i> 查看配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索过滤卡片 -->
+    <div v-if="list && list.length > 0" class="card">
+        <div class="card-header">
+            搜索过滤
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" v-model="searchKeyword" @input="searchChannel" class="form-control" placeholder="输入渠道名称搜索...">
+                        <button v-if="searchKeyword" @click="clearSearch" class="btn btn-outline-secondary">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 配置列表卡片 -->
+    <div v-if="filteredList && filteredList.length > 0" class="card">
+        <div class="card-header">
+            渠道仓库配置列表
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th scope="col">渠道</th>
+                        <th scope="col">支持的仓库</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="info in filteredList" :key="info.channel">
+                        <td><span class="badge bg-danger rounded-pill px-3 py-2">{{ info.channel }}</span></td>
+                        <td>
+                            <div class="row">
+                                <div v-for="(detail, index) in info.nowStocks" :key="index" class="col-3 mb-2">
+                                    <span class="badge bg-primary rounded-pill px-2 py-1">{{ detail }}</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增配置卡片 -->
+    <div class="card">
+        <div class="card-header">
+            新增渠道仓库配置
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="channelSelect" class="form-label fw-bold">选择渠道</label>
+                    <div class="input-group">
+                        <select v-model="selectedChannel" class="form-select" id="channelSelect" @change="onChannelChange">
+                            <option value="">请选择渠道</option>
+                            <option v-for="option in channelOptions" :key="option.value" :value="option.value">
+                                {{ option.label }}
+                            </option>
+                            <option value="custom">自定义渠道</option>
+                        </select>
+                        <input v-if="selectedChannel === 'custom'" type="text" v-model="customChannel" class="form-control" placeholder="输入自定义渠道名称">
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="availableStocks.length > 0" class="row mt-3">
+                <div class="col-md-8 mb-3">
+                    <label class="form-label fw-bold">可选仓库列表</label>
+                    <div class="table-container border rounded p-3 bg-light">
+                        <div class="row">
+                            <div v-for="(stock, index) in availableStocks" :key="stock.id" class="col-md-4 mb-2">
+                                <div class="form-check">
+                                    <input type="checkbox" :id="'stock-' + stock.id" :value="stock.id" v-model="selectedStocks" class="form-check-input">
+                                    <label :for="'stock-' + stock.id" class="form-check-label">{{ stock.name }}</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else-if="selectedChannel && !loadingStocks" class="row mt-3">
+                <div class="col-md-8">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 当前渠道暂无可用仓库数据
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="loadingStocks" class="row mt-3">
+                <div class="col-md-8">
+                    <div class="alert alert-info">
+                        <i class="bi bi-hourglass-split"></i> 正在加载仓库数据，请稍候...
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <button @click="update" class="btn btn-primary btn-action" :disabled="!selectedChannel || selectedStocks.length === 0">
+                        <i class="bi bi-save"></i> 确认添加
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Toast通知容器 -->
+    <div class="toast-container">
+        <div v-for="(toast, index) in toasts" 
+             :key="toast.id" 
+             :class="['toast-notification', toast.type, { closing: toast.closing }]">
+            <i class="toast-icon bi" :class="{
+                'bi-check-circle-fill': toast.type === 'success',
+                'bi-exclamation-triangle-fill': toast.type === 'error',
+                'bi-info-circle-fill': toast.type === 'info',
+                'bi-exclamation-circle-fill': toast.type === 'warning'
+            }"></i>
+            <div class="toast-content">{{ toast.message }}</div>
+            <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+        </div>
+    </div>
+</div>
+
+<script src="../css_js/own/lizi.js"></script>
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            this.initPage();
+            return {
+                message: 'FBA海外仓上架前移库申请渠道仓库配置',
+                channel: '',
+                stocks: '',
+                list: [],
+                filteredList: [],
+                loading: false,
+                env: "",
+                envMsg: "",
+                envClass: "",
+                searchKeyword: '',
+                url: "http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                },
+                // 新增数据属性
+                channelOptions: [
+                    { value: 'amazon_us', label: 'Amazon US' },
+                    { value: 'amazon_uk', label: 'Amazon UK' },
+                    { value: 'amazon_es', label: 'Amazon ES' },
+                    { value: 'amazon_ca', label: 'Amazon CA' },
+                    { value: 'amazon_it', label: 'Amazon IT' },
+                    { value: 'amazon_fr', label: 'Amazon FR' },
+                    { value: 'amazon_mx', label: 'Amazon MX' },
+                    { value: 'amazon_de', label: 'Amazon DE' },
+                    { value: 'amazon_jp', label: 'Amazon JP' },
+                    { value: 'amazon_au', label: 'Amazon AU' }
+                ],
+                selectedChannel: '',
+                customChannel: '',
+                availableStocks: [],
+                selectedStocks: [],
+                loadingStocks: false
+            }
+        },
+
+        methods: {
+            // 初始化页面，获取环境信息
+            async initPage() {
+                const data = {
+                    action: "paFbaChannelSellerConfig",
+                    params: {}
+                };
+
+                try {
+                    this.url = "http://172.16.29.23:90/php/controller";
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    if (res.status === 200) {
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                    }
+                } catch (error) {
+                    this.showError("初始化失败，无法获取环境信息");
+                    console.error("初始化错误:", error);
+                }
+            },
+
+            // 设置环境信息显示
+            setEnvMessage() {
+                switch(this.env) {
+                    case 'test':
+                        this.envMsg = 'Test环境';
+                        this.envClass = 'env-test';
+                        break;
+                    case 'local':
+                        this.envMsg = '开发环境';
+                        this.envClass = 'env-local';
+                        break;
+                    case 'uat':
+                        this.envMsg = 'UAT环境';
+                        this.envClass = 'env-uat';
+                        break;
+                    default:
+                        this.envMsg = '生产环境';
+                        this.envClass = 'env-prod';
+                }
+            },
+
+            // 查询配置列表
+            async search() {
+                // 重置消息
+                this.loading = true;                const data = {
+                    action: "paFbaChannelSellerConfig",
+                    params: {
+                        action: "searchAllConfig"
+                    }
+                };
+
+                try {
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    this.loading = false;
+
+                    if (res.status === 200) {
+                        if (res.data.data.length === 0) {
+                            this.showError("没有找到相关配置数据");
+                            this.list = [];
+                        } else {
+                            this.list = res.data.data;
+                            this.filteredList = [...this.list];
+                            this.env = res.data.env;
+                            this.setEnvMessage();
+                        }
+                    } else {
+                        this.showError("查询失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("查询错误:", error);
+                }
+            },
+
+            // 搜索过滤
+            searchChannel() {
+                if (!this.searchKeyword.trim()) {
+                    this.filteredList = [...this.list];
+                } else {
+                    const keyword = this.searchKeyword.toLowerCase().trim();
+                    this.filteredList = this.list.filter(item =>
+                        item.channel.toLowerCase().includes(keyword)
+                    );
+                }
+            },
+
+            // 清除搜索
+            clearSearch() {
+                this.searchKeyword = '';
+                this.filteredList = [...this.list];
+            },
+
+            // 渠道选择变更处理
+            onChannelChange() {
+                // 重置选择的仓库
+                this.selectedStocks = [];
+                this.availableStocks = [];
+
+                // 如果选择了具体渠道，加载该渠道的可用仓库
+                if (this.selectedChannel && this.selectedChannel !== 'custom') {
+                    this.loadStocksForChannel(this.selectedChannel);
+                }
+            },
+
+            // 加载指定渠道的可用仓库
+            async loadStocksForChannel(channel) {
+                this.loadingStocks = true;                try {
+                    // 调用获取仓库列表的接口
+                    const data = {
+                        action: "paFbaChannelSellerConfig",
+                        params: {
+                            action: "searchChannelStock",
+                            channel: channel
+                        }
+                    };
+
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+
+                    if (res.status === 200) {
+                        if (res.data.data && res.data.data.length > 0) {
+                            this.availableStocks = res.data.data.map(stock => ({
+                                id: stock.id,
+                                name: stock.name
+                            }));
+                        } else {
+                            this.availableStocks = [];
+                        }
+                    } else {
+                        this.showError("获取仓库列表失败");
+                        this.availableStocks = [];
+                    }
+                } catch (error) {
+                    this.showError("网络错误，无法获取仓库列表");
+                    this.availableStocks = [];
+                    console.error("获取仓库列表错误:", error);
+                } finally {
+                    this.loadingStocks = false;
+                }
+            },
+
+            // 更新配置
+            async update() {
+                // 重置消息
+                this.loading = true;                // 获取最终的渠道值
+                const finalChannel = this.selectedChannel === 'custom' ? this.customChannel : this.selectedChannel;
+
+                // 验证输入
+                if (!finalChannel || finalChannel.trim() === '') {
+                    this.loading = false;
+                    this.showError("请选择或输入渠道名称");
+                    return;
+                }
+
+                if (this.selectedStocks.length === 0) {
+                    this.loading = false;
+                    this.showError("请至少选择一个仓库");
+                    return;
+                }
+
+                const data = {
+                    action: "paFbaChannelSellerConfig",
+                    params: {
+                        channel: finalChannel,
+                        stocksList: this.selectedStocks
+                    }
+                };
+
+                try {
+                    let res = await axios.post(`${this.url}/update.php`, data, this.header);
+                    this.loading = false;
+
+                    if (res.status === 200 && res.data === true) {
+                        this.showSuccess("配置添加成功，请刷新列表查看");
+                        // 重置表单
+                        this.selectedChannel = "";
+                        this.customChannel = "";
+                        this.selectedStocks = [];
+                        this.availableStocks = [];
+                    } else {
+                        this.showError("配置添加失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("更新错误:", error);
+                }
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

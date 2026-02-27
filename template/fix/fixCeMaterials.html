@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>恢复CE资料呈现为已发布</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="../css_js/script/vue.global.js"></script>
+    <script src="../css_js/script/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <!-- 粒子特效 -->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px 0;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+        }
+        .form-control {
+            border-radius: 6px;
+        }
+        .btn-action {
+            width: 100%;
+            padding: 8px 0;
+            font-weight: bold;
+        }
+        .alert-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .env-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .env-test { background-color: #ffc107; color: #212529; }
+        .env-local { background-color: #17a2b8; color: white; }
+        .env-uat { background-color: #0d6efd; color: white; }
+        .env-prod { background-color: #dc3545; color: white; }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .status-new { background-color: #6c757d; color: white; }
+        .status-developerComplete { background-color: #0d6efd; color: white; }
+        .status-saleComplete { background-color: #17a2b8; color: white; }
+        .status-materialComplete { background-color: #198754; color: white; }
+        .status-deleted { background-color: #dc3545; color: white; }
+        .progress-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .progress-processing { background-color: #ffc107; color: #212529; }
+        .progress-success { background-color: #198754; color: white; }
+        .progress-failed { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- 页面标题和环境信息 -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2>{{ message }}</h2>
+            <p class="text-muted">当前环境：<span :class="`env-badge ${envClass}`">{{ envMsg }}</span></p>
+        </div>
+    </div>
+
+    <!-- 查询卡片 -->
+    <div class="card">
+        <div class="card-header">
+            CE单查询
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="titleInput" class="form-label fw-bold">CE单编号</label>
+                    <input type="text" v-model="title" class="form-control" id="titleInput" placeholder="请输入CE单编号">
+                </div>
+                <div class="col-md-4 mb-3 d-flex flex-column">
+                    <label class="form-label fw-bold invisible">查询按钮</label>
+                    <button @click="search" class="btn btn-primary btn-action">
+                        <i class="bi bi-search"></i> 查询CE单
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果列表卡片 -->
+    <div v-if="list && list.length > 0" class="card">
+        <div class="card-header">
+            查询结果 <span class="text-sm text-white-500">(共 {{ list.length }} 条记录)</span>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th scope="col">主键</th>
+                        <th scope="col">CE单编号</th>
+                        <th scope="col">状态</th>
+                        <th scope="col">处理进度</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="info in list" :key="info._id">
+                        <th scope="row">{{ info._id }}</th>
+                        <td>{{ info.ceBillNo }}</td>
+                        <td>
+                            <span :class="`status-badge status-${info.status}`">
+                                {{ statusMap[info.status] || info.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <span v-if="info.isSuccess === '正在执行中.'" class="progress-badge progress-processing">
+                                {{ info.isSuccess }}
+                            </span>
+                            <span v-else-if="info.isSuccess === '完成'" class="progress-badge progress-success">
+                                {{ info.isSuccess }}
+                            </span>
+                            <span v-else-if="info.isSuccess === '失败'" class="progress-badge progress-failed">
+                                {{ info.isSuccess }}
+                            </span>
+                            <span v-else>-</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <button @click="fix" class="btn btn-primary btn-action">
+                        <i class="bi bi-arrow-counterclockwise"></i> 恢复已发布
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Toast通知容器 -->
+    <div class="toast-container">
+        <div v-for="(toast, index) in toasts" 
+             :key="toast.id" 
+             :class="['toast-notification', toast.type, { closing: toast.closing }]">
+            <i class="toast-icon bi" :class="{
+                'bi-check-circle-fill': toast.type === 'success',
+                'bi-exclamation-triangle-fill': toast.type === 'error',
+                'bi-info-circle-fill': toast.type === 'info',
+                'bi-exclamation-circle-fill': toast.type === 'warning'
+            }"></i>
+            <div class="toast-content">{{ toast.message }}</div>
+            <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+        </div>
+    </div>
+</div>
+
+<script src="../css_js/own/lizi.js"></script>
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            this.initPage();
+            return {
+                message: '恢复CE资料呈现为已发布',
+                title: '',
+                status: '',
+                list: [],
+                loading: false,
+                statusMap: {
+                    "new": "新建",
+                    "developerComplete": "开发资料完成",
+                    "saleComplete": "销售资料完成",
+                    "materialComplete": "资料发布",
+                    "deleted": "作废"
+                },
+                env: "",
+                envMsg: "",
+                envClass: "",
+                url: "http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            }
+        },
+
+        methods: {
+            // 初始化页面，获取环境信息
+            async initPage() {
+                const data = {
+                    action: "fixCeMaterials",
+                    params: {}
+                };
+
+                try {
+                    this.url = "http://172.16.29.23:90/php/controller";
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    if (res.status === 200) {
+                        this.env = res.data.env;
+                        this.setEnvMessage();
+                    }
+                } catch (error) {
+                    this.showError("初始化失败，无法获取环境信息");
+                    console.error("初始化错误:", error);
+                }
+            },
+
+            // 设置环境信息显示
+            setEnvMessage() {
+                switch(this.env) {
+                    case 'test':
+                        this.envMsg = 'Test环境';
+                        this.envClass = 'env-test';
+                        break;
+                    case 'local':
+                        this.envMsg = '开发环境';
+                        this.envClass = 'env-local';
+                        break;
+                    case 'uat':
+                        this.envMsg = 'UAT环境';
+                        this.envClass = 'env-uat';
+                        break;
+                    default:
+                        this.envMsg = '生产环境';
+                        this.envClass = 'env-prod';
+                }
+            },
+
+            // 查询CE单
+            async search() {
+                // 重置消息
+                this.loading = true;
+                ;
+                ;
+
+                const data = {
+                    action: "fixCeMaterials",
+                    params: {
+                        title: this.title
+                    }
+                };
+
+                try {
+                    let res = await axios.post(`${this.url}/search.php`, data, this.header);
+                    this.loading = false;
+
+                    if (res.status === 200) {
+                        if (res.data.data.length === 0) {
+                            this.showError("没有找到相关数据");
+                            this.list = [];
+                        } else {
+                            this.list = res.data.data;
+                            this.env = res.data.env;
+                            this.setEnvMessage();
+                        }
+                    } else {
+                        this.showError("查询失败，请重试");
+                    }
+                } catch (error) {
+                    this.loading = false;
+                    this.showError("网络错误，无法连接到服务器");
+                    console.error("查询错误:", error);
+                }
+            },
+
+            // 恢复已发布状态
+            async fix() {
+                // 重置消息
+                this.loading = true;
+                ;
+                ;
+
+                if (!this.list || this.list.length === 0) {
+                    this.loading = false;
+                    this.showError("没有数据可以恢复");
+                    return;
+                }
+
+                let hasError = false;
+                for (let item of this.list) {
+                    item.isSuccess = "正在执行中.";
+
+                    const data = {
+                        action: "fixCeMaterials",
+                        params: {
+                            _id: item._id
+                        }
+                    };
+
+                    try {
+                        let res = await axios.post(`${this.url}/update.php`, data, this.header);
+
+                        if (res.status === 200 && res.data === true) {
+                            item.status = "materialComplete";
+                            item.isSuccess = "完成";
+                        } else {
+                            item.isSuccess = "失败";
+                            hasError = true;
+                        }
+                    } catch (error) {
+                        item.isSuccess = "失败";
+                        hasError = true;
+                        console.error("处理错误:", error);
+                    }
+                }
+
+                this.loading = false;
+                if (hasError) {
+                    this.showError("部分数据处理失败，请查看表格中的处理进度");
+                } else {
+                    this.showSuccess("所有数据处理成功");
+                }
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

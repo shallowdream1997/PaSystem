@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PA 上传文件到OSS</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.staticfile.org/axios/0.18.0/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <script src="../css_js/js/toast.js"></script>
+    <!--粒子特效-->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+    <!-- Toast通知样式 -->
+    <link rel="stylesheet" href="../css_js/css/toast.css">
+</head>
+<body>
+<div class="container" id="app">
+    <div style="margin-top: 20px" class="row">
+        <div class="col-5"><h3 style="color: yellow">{{message}} <br>查询或新增<br> <span style="color: red">当前环境：{{envMsg}}</span></h3></div>
+        <div class="col-7">
+            <div class="mb-3">
+                <input class="btn btn-primary" type="file" multiple @change="handleFileUpload" />
+            </div>
+
+<!--            <div class="mb-3">-->
+<!--                <button class="btn btn-primary" style="margin-left: 10px" @click="uploadFile">导入文件</button>-->
+<!--            </div>-->
+
+<!--            <div class="ui-g-5">-->
+<!--                <button class="btn btn-warning" style="margin-left: 10px" @click="search">扫描已上传的文件</button>-->
+<!--            </div>-->
+
+            <div class="ui-g-5">
+                <button class="btn btn-primary" style="margin-left: 10px" @click="uploadFile">预加载文件</button>
+            </div>
+
+<!--            <div class="mb-3" v-if="this.fileCollect && this.fileCollect.length > 0">-->
+<!--                <button class="btn btn-danger" @click="update">确认上传到OSS</button>-->
+<!--            </div>-->
+
+        </div>
+
+        <div class="col-5">
+            <button class="btn btn-warning" style="margin-left: 10px" @click="downloadOss">导出所有文件</button>
+        </div>
+
+        <div class="col-4">
+            <div class="mb-3" v-if="this.fileCollect && this.fileCollect.length > 0">
+                <button class="btn btn-danger" @click="update">确认上传到OSS</button>
+            </div>
+        </div>
+
+        <div class="col-3">
+            <button class="btn btn-warning" style="margin-left: 10px" @click="search">扫描已上传的文件</button>
+        </div>
+
+        <div class="col-5">
+            <span style="color: green">{{this.loading}}</span>
+        </div>
+        <div class="col-7"><span style="color: white">已上传oss数量：</span><b style="color: red">{{this.filenumber}}</b><b style="color: #00DDEB">/{{this.fileCollect.length}}</b></div>
+
+        <div class="col-12">
+            <span style="color: red">{{errorMsg}} - {{successMsg}}</span>
+        </div>
+        <div class="col-12">
+            <table class="table table-dark table-striped align-middle" v-if="fileCollect && fileCollect.length > 0">
+                <thead>
+                <tr>
+                    <th scope="col">文件原名</th>
+                    <th scope="col">加密名</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="info in fileCollect" :key="fileCollect.fileName">
+                    <td>
+                        {{info.actualFileName}}
+                    </td>
+                    <td>
+                        {{info.fileName}}
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+
+        <div class="col-12" style="color: white;height: 580px;overflow-y: auto;">
+            <div v-for="info in linkList">
+                <div class="mb-3">
+                    文件原名: {{info.actualFileName}}
+                </div>
+                <div class="mb-3">
+                    Oss Key名: {{info.key}}
+                </div>
+                <div class="mb-3">
+                    OSS链接: <a v-if="info.link" @click="downloadOssLink(info.link)" class="coll-btn">{{info.link}}</a>
+                </div>
+                <hr>
+            </div>
+
+<!--            <table class="table table-bordered table-dark table-striped align-middle"  style="white-space: normal" v-if="linkList && linkList.length > 0">-->
+<!--                <thead>-->
+<!--                <tr>-->
+<!--                    <th scope="col">文件原名</th>-->
+<!--                    <th scope="col">Oss Key名</th>-->
+<!--                    <th scope="col">OSS链接</th>-->
+<!--                    <th scope="col">点击下载</th>-->
+<!--                </tr>-->
+<!--                </thead>-->
+<!--                <tbody>-->
+<!--                <tr v-for="info in linkList" :key="linkList.key">-->
+<!--                    <td>-->
+<!--                        {{info.actualFileName}}-->
+<!--                    </td>-->
+<!--                    <td>-->
+<!--                        {{info.key}}-->
+<!--                    </td>-->
+<!--                    <td style="white-space: normal">-->
+<!--                        {{info.link}}-->
+<!--                    </td>-->
+<!--                    <td><a v-if="info.link" @click="downloadOssLink(info.link)" class="coll-btn">下载</a></td>-->
+<!--                </tr>-->
+<!--                </tbody>-->
+<!--            </table>-->
+
+        </div>
+
+
+<!--        <div class="col-2"></div>-->
+<!--        <div class="col-10" style="margin-top: 20px;color: white" v-if="this.ossLink">-->
+<!--            点击下载oss文件：<a @click="downloadOssLink(this.ossLink)" class="coll-btn">{{this.ossLink}}</a>-->
+<!--        </div>-->
+
+<!--        <div class="col-12" style="margin-top: 20px">-->
+<!--            <div class="row">-->
+<!--                <h5 style="color: red">{{loading}}</h5>-->
+<!--                <h4 style="color: red">{{errorMsg}}</h4>-->
+<!--                <h4 style="color: green">{{successMsg}}</h4>-->
+<!--            </div>-->
+<!--        </div>-->
+    </div>
+
+    <!-- Toast通知容器 -->
+    <div class="toast-container">
+        <div v-for="toast in toasts" 
+             :key="toast.id" 
+             :class="['toast-notification', toast.type, { closing: toast.closing }]">
+            <i class="toast-icon bi" :class="{
+                'bi-check-circle-fill': toast.type === 'success',
+                'bi-exclamation-triangle-fill': toast.type === 'error',
+                'bi-info-circle-fill': toast.type === 'info',
+                'bi-exclamation-circle-fill': toast.type === 'warning'
+            }"></i>
+            <div class="toast-content">{{ toast.message }}</div>
+            <button class="toast-close" @click="removeToast(toast.id)">&times;</button>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
+<script src="../css_js/own/lizi.js"></script>
+
+
+<script>
+
+    const {createApp, ref,onMounted} = Vue
+
+
+    createApp({
+        mixins: [ToastMixin],
+        data() {
+            console.log(getDomainAndPort());
+            this.initPage();
+            return {
+                message: '上传文件到OSS',
+                selectedFile: null,
+                fileName:"",
+                fullPath:"",
+                fileCollect:[],
+                linkList:[],
+                filenumber:0,
+                loading: false,
+                env:"",
+                envMsg:"",
+                url:"http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 其他自定义头
+                    }
+                }
+            }
+        },
+
+        methods: {
+            async initPage(){
+                const data = {
+                    action: "uploadOss",
+                    params: {},
+                };
+                this.header = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 其他自定义头
+                    }
+                };
+                this.url = "http://172.16.29.23:90/php/controller";
+                let res = await axios.post(`${this.url}/search.php`, data,this.header).catch(function (error) {
+                    this.showError("网络错误");
+                });
+                this.loading = false;
+                if (res.status === 200) {
+                    this.env = res.data.env;
+                    this.envMsg = this.env == 'test' ? 'Test环境' :  (this.env == 'local' ?  '开发环境' :  (this.env == 'uat' ?  'UAT环境' : '生产环境'));
+                }
+
+            },
+            handleFileUpload(event) {
+                this.selectedFile = event.target.files;
+            },
+            async uploadFile() {
+                if (this.selectedFile) {
+                    try {
+                        this.fullPath = "";
+                        this.fileName = "";
+                        let fileCollect = [];
+                        let uploadMessages = [];
+                        for (let i = 0; i < this.selectedFile.length; i++) {
+                            const formData = new FormData();
+                            formData.append('fileToUploadOss[]', this.selectedFile[i]);
+
+                            let response = await axios.post(`${this.url}/upload.php`, formData, {
+                                headers: {
+                                    'Content-Type': 'multipart/form-data'
+                                }
+                            });
+                            if (response && response.data.code == 200){
+                                uploadMessages.push(response.data.message);
+                                console.log(response.data.fileCollect);
+                                this.loading = true;
+                                this.fileCollect = [...this.fileCollect,...response.data.fileCollect];
+                            }else {
+                                this.showError(response.data.message);
+                            }
+                        }
+                        if (uploadMessages.length > 0) {
+                            this.showSuccess(`成功上传 ${uploadMessages.length} 个文件`);
+                        }
+                        console.log(this.fileCollect);
+
+                    } catch (error) {
+                        this.showError('加载文件失败');
+                    }
+                } else {
+                    this.showError('请选择一个文件');
+                }
+            },
+            async update(){
+                this.loading = true;
+                if (this.fileCollect.length == 0) {
+                    this.showError("请先确保上文文件内容是否正确");
+                    this.loading = false;
+                    return;
+                }
+                this.linkList = [];
+                this.filenumber = 0;
+                let successCount = 0;
+                let failCount = 0;
+                
+                for(let chunk of this.fileCollect){
+                    const data = {
+                        action: "uploadOss",
+                        params: {
+                            fileCollect: [chunk]
+                        },
+                    };
+                    let res = await axios.post(`${this.url}/update.php`, data,this.header).catch(function (error) {
+                        this.showError("网络错误");
+                    });
+                    console.log(res)
+                    if (res && res.data && res.data.uploadSuccess){
+                        this.loading = false;
+                        this.filenumber++;
+                        successCount++;
+                    }else {
+                        failCount++;
+                        this.showError(res.data.messages);
+                    }
+                }
+
+                this.loading = false;
+                if (successCount > 0) {
+                    this.showSuccess(`成功处理 ${successCount} 个文件`);
+                }
+            },
+            async downloadOssLink(link){
+                window.open(link);
+            },
+            async search(){
+                const data = {
+                    action: "uploadOss",
+                    params: {
+                        "searchData": true
+                    },
+                };
+                this.header = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 其他自定义头
+                    }
+                };
+                this.url = "http://172.16.29.23:90/php/controller";
+                let res = await axios.post(`${this.url}/search.php`, data,this.header).catch(function (error) {
+                    this.showError("网络错误");
+                });
+                this.loading = false;
+                if (res && res.data && res.data.uploadSuccess){
+                    this.linkList = res.data.linkList;
+                    this.showSuccess(res.data.messages);
+                }else {
+                    this.showError(res.data.messages);
+                }
+
+            },
+            async downloadOss(){
+                const data = {
+                    action: "uploadOss",
+                    params: {
+                        "searchData": true,
+                        "isExport":true
+                    },
+                };
+                this.header = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 其他自定义头
+                    }
+                };
+                this.url = "http://172.16.29.23:90/php/controller";
+                let res = await axios.post(`${this.url}/search.php`, data,this.header).catch(function (error) {
+                    this.showError("网络错误");
+                });
+                this.loading = false;
+                if (res && res.data && res.data.uploadSuccess){
+                    this.linkList = res.data.linkList;
+                    window.open("/php/" + res.data.downloadOssPathUrl);
+                    this.showSuccess(res.data.messages);
+                }else {
+                    this.showError(res.data.messages);
+                }
+
+            }
+        },
+
+
+    }).mount('#app')
+
+
+</script>
