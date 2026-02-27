@@ -23,7 +23,7 @@ class ExcelUtils
 
     public function __construct($downPath = "")
     {
-        $downDefaultFile = __DIR__ . "/../export/";
+        $downDefaultFile = __DIR__ . "/../../../export/";
         $this->downPath = !empty($downPath) ? $downDefaultFile . $downPath : $downDefaultFile . "default/";
     }
 

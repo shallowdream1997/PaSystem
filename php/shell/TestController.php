@@ -75,7 +75,15 @@ class TestController
         }
 
     }
+
+
+    public function readPaSkuPhotoProgress()
+    {
+        $excelUtils = new ExcelUtils();
+        $list = $excelUtils->getXlsxData("../../export/default/图片拍摄进度导出_20260227175111.xlsx");
+        $this->log(count($list));
+    }
 }
 
 $c = new TestController();
-$c->downloadPaSkuPhotoProgress();
+$c->readPaSkuPhotoProgress();
