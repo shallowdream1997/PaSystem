@@ -116,10 +116,10 @@ class skuImportSync
     private function createTemplate($filePath)
     {
         try {
-            // 使用PHPExcel创建模板
-            $objPHPExcel = new PHPExcel();
-            $objPHPExcel->setActiveSheetIndex(0);
-            $sheet = $objPHPExcel->getActiveSheet();
+            // 使用PhpSpreadsheet创建模板
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $spreadsheet->setActiveSheetIndex(0);
+            $sheet = $spreadsheet->getActiveSheet();
             
             // 设置表头
             $sheet->setCellValue('A1', 'SKU ID');
@@ -147,8 +147,8 @@ class skuImportSync
             $sheet->setCellValue('A10', '4. 文件格式支持.xlsx和.xls');
             
             // 保存文件
-            $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
-            $objWriter->save($filePath);
+            $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($filePath);
             
         } catch (Exception $e) {
             // 如果创建失败，记录错误

@@ -1070,3 +1070,5 @@
 2026-02-27 15:20:52 - 参数：{"placementAction":1,"placementType":2,"targetingType":"manual","campaignType":"keyword","channel":"amazon_us","sellerId":"amazon_us_hood","scu":"s26010400ux1674","contentType":"broad","content":"70200101001000","contentBid":"0.3","createdBy":"system(zhouangang)","modifiedBy":"system(zhouangang)"}
 2026-02-27 15:20:58 - 请求: POST：http://172.16.10.40:8000/api/dingding/sendOaNotice
 2026-02-27 15:20:58 - 参数：{"userType":"userName","userIdList":"zhouangang","title":"重新投放keywordamazon_us结束","msg":[{"key":"通知日期","value":"2026-02-27 15:20:58"}]}
+2026-02-27 17:51:10 - 请求: GET：https://master-script-nodejs-poms-list-manage.ux168.cn/api/sku_photography_progresss/queryPage?limit=10&page=1
+2026-02-27 17:51:10 - 参数：[]

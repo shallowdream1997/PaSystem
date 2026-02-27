@@ -1,12 +1,17 @@
 <?php
 require dirname(__FILE__) . '/../../vendor/autoload.php';
 
-require_once(dirname(__FILE__) . "/../../extends/PHPExcel-1.8/Classes/PHPExcel.php");
-
-//use PhpOffice\PhpSpreadsheet\Spreadsheet;
-//use PhpOffice\PhpSpreadsheet\Writer\Xlsx as WriteXlsx;
-//use PhpOffice\PhpSpreadsheet\Reader\Xlsx as ReaderXlsx;
-//use PhpOffice\PhpSpreadsheet\IOFactory;
+// 使用PhpSpreadsheet替代PHPExcel
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx as WriteXlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Xls as WriteXls;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx as ReaderXlsx;
+use PhpOffice\PhpSpreadsheet\Reader\Xls as ReaderXls;
+use PhpOffice\PhpSpreadsheet\Reader\Csv as ReaderCsv;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\RichText\RichText;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 /**
  * 导入导出文件工具类
@@ -18,7 +23,7 @@ class ExcelUtils
 
     public function __construct($downPath = "")
     {
-        $downDefaultFile = __DIR__ . "/../export/uploads/";
+        $downDefaultFile = __DIR__ . "/../export/";
         $this->downPath = !empty($downPath) ? $downDefaultFile . $downPath : $downDefaultFile . "default/";
     }
 
@@ -42,40 +47,41 @@ class ExcelUtils
     {
         $downDefaultFileName = "导出默认文件_" . date('YmdHis') . ".xlsx";
         $downFileName = !empty($fileName) ? $fileName : $downDefaultFileName;
-
+    
         if (count($data) > 0) {
-            $obj = new \PHPExcel();
-            $obj->removeSheetByIndex(0);
+            $spreadsheet = new Spreadsheet();
+            $spreadsheet->removeSheetByIndex(0);
             $index = 0;
             // 获取表头
-            $title = array();
-            $obj->createSheet();
-            $obj->setActiveSheetIndex($index);
-            $obj->getActiveSheet($index)->setTitle('Sheet' . ($index + 1));
+            $spreadsheet->createSheet();
+            $spreadsheet->setActiveSheetIndex($index);
+            $spreadsheet->getActiveSheet()->setTitle('Sheet' . ($index + 1));
             $titleNum = 1;
             $dataNum = 2;
-            $keyNum = 'A';
-            $checkTitle = array();
+            $columnIndex = 1; // PhpSpreadsheet使用1-based索引
+                
             foreach ($data[0] as $key => $item) {
                 $titleName = isset($titleList[$key]) ? $titleList[$key] : $key;
-                $obj->getActiveSheet($index)->setCellValue($keyNum . $titleNum, $titleName);
-                $keyNum++;
+                $columnLetter = Coordinate::stringFromColumnIndex($columnIndex);
+                $spreadsheet->getActiveSheet()->setCellValue($columnLetter . $titleNum, $titleName);
+                $columnIndex++;
                 unset($titleName);
             }
+                
             foreach ($data as $item) {
-                $keyNum = 'A';
+                $columnIndex = 1;
                 foreach ($item as $key => $itemSon) {
-                    $obj->getActiveSheet($index)->setCellValue($keyNum . $dataNum, $itemSon);
-                    $keyNum++;
+                    $columnLetter = Coordinate::stringFromColumnIndex($columnIndex);
+                    $spreadsheet->getActiveSheet()->setCellValue($columnLetter . $dataNum, $itemSon);
+                    $columnIndex++;
                 }
                 $dataNum++;
                 unset($item);
             }
             unset($data);
             $tmpName = $this->downPath . $downFileName;
-            $objWriter = new \PHPExcel_Writer_Excel5($obj);
-            $objWriter->save($tmpName);
-
+            $writer = new WriteXls($spreadsheet);
+            $writer->save($tmpName);
         }
     }
 
@@ -94,15 +100,15 @@ class ExcelUtils
         if (empty($fileName)){
             $fileName  = "默认导出文件_".date("YmdHis").".xlsx";
         }
-        // 创建一个新的 PHPExcel 对象
-        $objPHPExcel = new PHPExcel();
+        // 创建一个新的 Spreadsheet 对象
+        $spreadsheet = new Spreadsheet();
 
         // 设置当前活动的工作表
-        $objPHPExcel->setActiveSheetIndex(0);
-        $sheet = $objPHPExcel->getActiveSheet();
+        $spreadsheet->setActiveSheetIndex(0);
+        $sheet = $spreadsheet->getActiveSheet();
 
-        // 设置表头
-        $columnIndex = 0;
+        // 设置表头 (PhpSpreadsheet使用1-based索引)
+        $columnIndex = 1;
 
         foreach ($customHeaders as $header) {
             // 设置自定义表头
@@ -113,7 +119,7 @@ class ExcelUtils
         // 填充数据
         $rowIndex = 2; // 从第二行开始填充数据
         foreach ($list as $row) {
-            $columnIndex = 0;
+            $columnIndex = 1;
             foreach ($row as $cellValue) {
                 $sheet->setCellValueByColumnAndRow($columnIndex, $rowIndex, $cellValue);
                 $columnIndex++;
@@ -122,17 +128,13 @@ class ExcelUtils
         }
 
         // 设置文件格式和保存路径
-        $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
 
         // 保存文件到指定路径
         $filePath = $this->downPath ."{$fileName}";
-        $objWriter->save($filePath);
+        $writer->save($filePath);
 
         return $filePath;
-
-        //// 保存文件
-        //$objWriter->save($this->downPath ."{$fileName}_".date("YmdHis").".xlsx");
-
     }
 
 
@@ -145,30 +147,29 @@ class ExcelUtils
     public function _readXlsFile($fileName)
     {
         $returnArray = array();
-        $objPHPExcel = PHPExcel_IOFactory::load($fileName);
-        $cacheMethod = PHPExcel_CachedObjectStorageFactory::cache_to_phpTemp;
-        $cacheSettings = array(
-            'memoryCacheSize' => '1024MB'
-        );
-        PHPExcel_Settings::setCacheStorageMethod($cacheMethod, $cacheSettings);
-        $sheetNames = $objPHPExcel->getSheetNames();
+        $spreadsheet = IOFactory::load($fileName);
+        
+        // PhpSpreadsheet有更好的内存管理，不需要手动设置缓存
+        
+        $sheetNames = $spreadsheet->getSheetNames();
         foreach ($sheetNames as $sheetId => $sheetName) {
             $sheetData = array();
-            $sheet = $objPHPExcel->getSheet($sheetId);
+            $sheet = $spreadsheet->getSheet($sheetId);
             $highestColumn = $sheet->getHighestColumn(); // 获取最后一列的列名
-            $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn); // 取得excel中的列数
+            $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn); // 取得excel中的列数
 
             $columnArray = array();
-            for ($excelColumnIndex = 0; $excelColumnIndex < $highestColumnIndex; $excelColumnIndex++) {
+            for ($excelColumnIndex = 1; $excelColumnIndex <= $highestColumnIndex; $excelColumnIndex++) { // 改为1-based索引
                 $columnArray[] = trim($sheet->getCellByColumnAndRow($excelColumnIndex, 1)->getValue());
             }
 
             $rowCount = $sheet->getHighestRow(); // 行数
             for ($j = 2; $j <= $rowCount; $j++) {
-                $emptyColumn = 0;
                 $data = array();
                 foreach ($columnArray as $key => $columnName) {
-                    $value = trim($sheet->getCellByColumnAndRow($key, $j)->getValue());
+                    // 注意：这里$key需要+1因为columnArray是从0开始的索引
+                    $columnIndex = $key + 1;
+                    $value = trim($sheet->getCellByColumnAndRow($columnIndex, $j)->getValue());
                     $data[$columnName] = $value;
                 }
                 $sheetData[] = $data;
@@ -245,53 +246,64 @@ class ExcelUtils
     public function _readCSV($csvPath)
     {
         try {
-            $reader = new PHPExcel_Reader_CSV();
+            $reader = new ReaderCsv();
             $reader->setInputEncoding('UTF-8');
             $reader->setDelimiter(',');
-
-            // 指定从第2行开始读取标题（跳过首行空数据）
-            $reader->setRowIteratorStart(2);
-
-            $phpExcel = $reader->load($csvPath);
-            $sheet = $phpExcel->getActiveSheet();
-
-            // 读取真实标题行（图片中的第2行）
-            $headerRow = $sheet->getRowIterator()->current();
-            $headerKeys = [];
-            foreach ($headerRow->getCellIterator() as $cell) {
-                $headerKeys[] = $cell->getValue(); // 标题如campaign_id, adgroup_name等
+                
+            // PhpSpreadsheet没有setRowIteratorStart方法，需要手动处理
+            $spreadsheet = $reader->load($csvPath);
+            $sheet = $spreadsheet->getActiveSheet();
+    
+            // 获取所有行数据
+            $allRows = $sheet->toArray();
+                
+            if (empty($allRows)) {
+                return [];
             }
-
-            // 强制指定需要文本格式的列（D/E列的adgroup_id）
-            $textColumns = ['D', 'E'];
-
+    
+            // 假设第2行是标题行（索引1）
+            $headerRowIndex = 1;
+            if (count($allRows) <= $headerRowIndex) {
+                return [];
+            }
+                
+            $headerKeys = $allRows[$headerRowIndex];
+                
+            // 强制指定需要文本格式的列（D/E列对应索引3,4）
+            $textColumnIndexes = [3, 4]; // 0-based索引
+    
             $data = [];
-            $rowIterator = $sheet->getRowIterator();
-            $rowIterator->resetStart(3); // 数据从第3行开始
-
-            foreach ($rowIterator as $row) {
+                
+            // 从第3行开始读取数据（索引2）
+            for ($rowIndex = 2; $rowIndex < count($allRows); $rowIndex++) {
                 $rowData = [];
-                foreach ($row->getCellIterator() as $col => $cell) {
-                    $key = $headerKeys[PHPExcel_Cell::columnIndexFromString($col) - 1] ?? $col;
-
+                $rowValues = $allRows[$rowIndex];
+                    
+                foreach ($rowValues as $colIndex => $cellValue) {
+                    $key = $headerKeys[$colIndex] ?? 'Column' . ($colIndex + 1);
+    
                     // 针对D/E列强制文本格式读取
-                    if (in_array($col, $textColumns)) {
-                        $value = $cell->getFormattedValue(); // 直接获取显示值（如5.48474E+14原文）
-                        $value = (string)$value;
+                    if (in_array($colIndex, $textColumnIndexes)) {
+                        // 对于长数字，确保作为字符串处理
+                        if (is_numeric($cellValue) && strlen((string)$cellValue) > 15) {
+                            $value = (string)$cellValue;
+                        } else {
+                            $value = (string)$cellValue;
+                        }
                     } else {
-                        $value = $cell->getValue();
+                        $value = $cellValue;
                     }
-
-                    // 修复图片中数字粘连问题（如311196306576001411arrc250326）
-                    if (is_numeric($value) && strlen($value) > 15) {
+    
+                    // 修复长数字问题
+                    if (is_numeric($value) && strlen((string)$value) > 15) {
                         $value = (string)$value;
                     }
-
+    
                     $rowData[$key] = $value;
                 }
                 $data[] = $rowData;
             }
-
+    
             return $data;
         } catch (Exception $e) {
             die("读取CSV失败: " . $e->getMessage());
@@ -304,39 +316,38 @@ class ExcelUtils
     {
         $returnArray = array();
 
-        // 设置缓存以提高大文件处理性能
-        $cacheMethod = PHPExcel_CachedObjectStorageFactory::cache_to_phpTemp;
-        $cacheSettings = array('memoryCacheSize' => '1024MB');
-        PHPExcel_Settings::setCacheStorageMethod($cacheMethod, $cacheSettings);
+        // PhpSpreadsheet有更好的内存管理，不需要手动设置缓存
 
         // 加载文件
-        $objPHPExcel = PHPExcel_IOFactory::load($fileName);
+        $spreadsheet = IOFactory::load($fileName);
 
         // 获取所有工作表名称
-        $sheetNames = $objPHPExcel->getSheetNames();
+        $sheetNames = $spreadsheet->getSheetNames();
 
         foreach ($sheetNames as $sheetId => $sheetName) {
             $sheetData = array();
-            $sheet = $objPHPExcel->getSheet($sheetId);
+            $sheet = $spreadsheet->getSheet($sheetId);
 
             // 获取列数和行数
             $highestColumn = $sheet->getHighestColumn();
-            $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);
+            $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
             $rowCount = $sheet->getHighestRow();
 
             // 读取列标题（第一行）
             $columnArray = array();
-            for ($excelColumnIndex = 0; $excelColumnIndex < $highestColumnIndex; $excelColumnIndex++) {
+            for ($excelColumnIndex = 1; $excelColumnIndex <= $highestColumnIndex; $excelColumnIndex++) { // 改为1-based索引
                 $cell = $sheet->getCellByColumnAndRow($excelColumnIndex, 1);
-                $columnArray[] = $this->_getCellValue($cell);
+                $columnArray[] = $this->_getCellValueV2($cell);
             }
 
             // 读取数据行（从第二行开始）
             for ($j = 2; $j <= $rowCount; $j++) {
                 $data = array();
                 foreach ($columnArray as $key => $columnName) {
-                    $cell = $sheet->getCellByColumnAndRow($key, $j);
-                    $data[$columnName] = $this->_getCellValue($cell);
+                    // 注意：这里$key需要+1因为columnArray是从0开始的索引
+                    $columnIndex = $key + 1;
+                    $cell = $sheet->getCellByColumnAndRow($columnIndex, $j);
+                    $data[$columnName] = $this->_getCellValueV2($cell);
                 }
                 $sheetData[] = $data;
             }
@@ -349,15 +360,15 @@ class ExcelUtils
 
     /**
      * 获取单元格值，处理长数字不转为科学计数法
-     * @param PHPExcel_Cell $cell 单元格对象
+     * @param \PhpOffice\PhpSpreadsheet\Cell\Cell $cell 单元格对象
      * @return mixed 处理后的值
      */
-    protected function _getCellValue(PHPExcel_Cell $cell)
+    protected function _getCellValueV2($cell)
     {
         $value = $cell->getValue();
 
         // 处理富文本
-        if ($value instanceof PHPExcel_RichText) {
+        if ($value instanceof RichText) {
             $value = $value->getPlainText();
         }
 
@@ -367,13 +378,13 @@ class ExcelUtils
             $format = $cell->getStyle()->getNumberFormat()->getFormatCode();
 
             // 如果是常规格式且数字长度超过10位，转为字符串保持原样
-            if ($format == PHPExcel_Style_NumberFormat::FORMAT_GENERAL &&
+            if ($format == NumberFormat::FORMAT_GENERAL &&
                 strlen((string)$value) > 10) {
                 return (string)$value;
             }
 
             // 如果是文本格式，直接返回字符串形式
-            if ($format == PHPExcel_Style_NumberFormat::FORMAT_TEXT) {
+            if ($format == NumberFormat::FORMAT_TEXT) {
                 return (string)$value;
             }
         }
