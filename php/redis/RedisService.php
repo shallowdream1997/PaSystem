@@ -11,7 +11,7 @@ class RedisService
      * redis本地调用
      * @var \Redis
      */
-    private $redis;
+    private \Redis $redis;
 
     public function __construct(){
         $this->redis = new \Redis();

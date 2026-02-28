@@ -1,9 +1,10 @@
 <?php
-require dirname(__FILE__) . '/../../vendor/autoload.php';
-require_once dirname(__FILE__) . '/../requiredfile/requiredChorm.php';
-require_once dirname(__FILE__) . '/../utils/ExcelUtils.php';
-require_once dirname(__FILE__) . '/../shell/SyncProductSku.php';
-require_once dirname(__FILE__) . '/../class/Logger.php';
+namespace App\Controller;
+
+use App\Core\MyLogger;
+use App\Helper\ExcelUtils;
+use App\Service\CurlService;
+use App\Shell\SyncProductSku;
 
 /**
  * SKU数据导入和同步控制器
@@ -67,7 +68,7 @@ class skuImportSync
                     ];
             }
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'message' => '处理请求时发生错误: ' . $e->getMessage(),
@@ -100,7 +101,7 @@ class skuImportSync
             readfile($templatePath);
             exit;
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'message' => '下载模板失败: ' . $e->getMessage(),
@@ -150,7 +151,7 @@ class skuImportSync
             $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
             $writer->save($filePath);
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             // 如果创建失败，记录错误
             error_log("创建模板失败: " . $e->getMessage());
             throw $e;
@@ -258,7 +259,7 @@ class skuImportSync
                 ]
             ];
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             if (file_exists($targetPath)) {
                 unlink($targetPath); // 清理临时文件
             }
@@ -312,7 +313,7 @@ class skuImportSync
             $syncProductSku = new SyncProductSku();
             
             // 根据目标环境设置相应的CurlService
-            $reflection = new ReflectionClass($syncProductSku);
+            $reflection = new \ReflectionClass($syncProductSku);
             if ($targetEnv === 'test') {
                 $syncProductSku->toCurlService = (new CurlService())->test();
                 $this->logger->log("目标环境设置为: TEST");
@@ -359,7 +360,7 @@ class skuImportSync
                             $deleteResult = $syncProductSku->commonToDeleteId($module, $port, $toDatum['_id']);
                             // 记录删除成功日志
                             $this->logger->log("删除成功: ID={$toDatum['_id']}");
-                        } catch (Exception $e) {
+                        } catch (\Exception $e) {
                             // 删除失败不影响整体流程，继续执行
                             $errorMsg = "删除数据失败: Module={$module}, ID={$toDatum['_id']}, Error=" . $e->getMessage();
                             $this->logger->log($errorMsg);
@@ -376,12 +377,12 @@ class skuImportSync
                         $createResult = $syncProductSku->commonToCreate($module, $port, $fromDatum);
                         // 记录创建成功日志
                         $this->logger->log("创建成功[" . ($index + 1) . "/" . count($fromData) . "]");
-                    } catch (Exception $e) {
+                    } catch (\Exception $e) {
                         // 创建失败记录错误
                         $errorMsg = "创建数据失败: Module={$module}, Data=" . json_encode($fromDatum) . ", Error=" . $e->getMessage();
                         $this->logger->log($errorMsg);
                         error_log($errorMsg);
-                        throw new Exception("创建数据失败: " . $e->getMessage());
+                        throw new \Exception("创建数据失败: " . $e->getMessage());
                     }
                 }
                 
@@ -411,7 +412,7 @@ class skuImportSync
                 ];
             }
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $errorMsg = "SKU同步失败: SKU={$skuId}, Module={$module}, Error=" . $e->getMessage();
             $this->logger->log("========== SKU同步失败 ==========");
             $this->logger->log($errorMsg);
@@ -503,7 +504,7 @@ try {
     
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
     
-} catch (Exception $e) {
+} catch (\Exception $e) {
     echo json_encode([
         'success' => false,
         'message' => '服务器内部错误: ' . $e->getMessage(),

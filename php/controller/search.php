@@ -1,9 +1,13 @@
 <?php
-require dirname(__FILE__) . '/../../vendor/autoload.php';
+namespace App\Controller;
 
-require_once dirname(__FILE__) . '/../requiredfile/requiredChorm.php';
-require_once dirname(__FILE__) . '/EnvironmentConfig.php';
-require_once dirname(__FILE__) . '/../shell/ProductSkuController.php';
+use App\Core\MyLogger;
+use App\Helper\DataUtils;
+use App\Helper\ExcelUtils;
+use App\Controller\EnvironmentConfig;
+use App\Service\CurlService;
+use App\Service\RedisService;
+use App\Shell\ProductSkuController;
 
 /**
  * 查询接口
@@ -465,7 +469,7 @@ class search
                             $fculist[$info['fcuId']] = $info;
                         }
                     }
-                } catch (Exception $e) {
+                } catch (\Exception $e) {
                     $errors[] = "查询FCU数据失败: " . $e->getMessage();
                     $this->logger->log2("查询FCU数据异常: " . $e->getMessage());
                 }

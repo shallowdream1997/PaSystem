@@ -1,5 +1,8 @@
 <?php
-require_once dirname(__FILE__) . '/../requiredfile/requiredChorm.php';
+namespace App\Controller;
+
+use App\Helper\ExcelUtils;
+use App\Helper\DataUtils;
 
 class upload
 {

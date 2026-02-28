@@ -1,10 +1,12 @@
 <?php
-require dirname(__FILE__) . '/../../vendor/autoload.php';
+namespace App\Controller;
 
-require_once dirname(__FILE__) . '/../requiredfile/requiredChorm.php';
-require_once dirname(__FILE__) . '/EnvironmentConfig.php';
-require_once dirname(__FILE__) . '/../shell/ProductSkuController.php';
-require_once(dirname(__FILE__) . "/../../php/utils/DataUtils.php");
+use App\Core\MyLogger;
+use App\Helper\DataUtils;
+use App\Controller\EnvironmentConfig;
+use App\Service\CurlService;
+use App\Service\RedisService;
+use App\Shell\ProductSkuController;
 
 /**
  * 更新接口
@@ -505,7 +507,7 @@ class update
                         'request-trace-level: 1',
                         'Content-Type: multipart/form-data',
                     ), false);
-                    $cfile = new CURLFile($target_dir, "", $target_dir);
+                    $cfile = new \CURLFile($target_dir, "", $target_dir);
 
 //                    $key = "pa/oss_test/{$dataInfo['actualFileName']}";
                     $key = "dull_sale/{$dataInfo['actualFileName']}";
@@ -666,7 +668,7 @@ class update
                             $fculist[$info['fcuId']] = $info;
                         }
                     }
-                } catch (Exception $e) {
+                } catch (\Exception $e) {
                     $errors[] = "查询FCU数据失败: " . $e->getMessage();
                     $this->logger->log2("查询FCU数据异常: " . $e->getMessage());
                 }
@@ -686,7 +688,7 @@ class update
                         if ($getProductMainResp && count($getProductMainResp['data']) > 0){
                             $list = array_merge($list,$getProductMainResp['data']);
                         }
-                    } catch (Exception $e) {
+                    } catch (\Exception $e) {
                         $errors[] = "查询产品线数据失败: " . $e->getMessage();
                         $this->logger->log2("查询产品线数据异常: " . $e->getMessage());
                     }
@@ -742,7 +744,7 @@ class update
                                     "productLine" => "",
                                 ];
                             }
-                        } catch (Exception $e) {
+                        } catch (\Exception $e) {
                             $errors[] = "更新FCU记录异常: fcuId={$fcuId}, 错误: " . $e->getMessage();
                             $this->logger->log2("更新FCU记录异常: fcuId={$fcuId}, 错误: " . $e->getMessage());
                             

@@ -1,8 +1,8 @@
 <?php
-require dirname(__FILE__) . '/../../vendor/autoload.php';
-require_once dirname(__FILE__) . '/../requiredfile/requiredChorm.php';
-require_once dirname(__FILE__) . '/EnvironmentConfig.php';
-require_once dirname(__FILE__) . '/../utils/ExcelUtils.php';
+namespace App\Controller;
+
+use App\Helper\ExcelUtils;
+use App\Controller\EnvironmentConfig;
 
 /**
  * Excel文件上传和数据处理控制器
@@ -85,7 +85,7 @@ class excelUpload
                 ]
             ];
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'message' => '处理文件时发生错误: ' . $e->getMessage(),
@@ -224,7 +224,7 @@ class excelUpload
                 'preview' => $preview
             ];
             
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'message' => '读取Excel文件时发生错误: ' . $e->getMessage(),

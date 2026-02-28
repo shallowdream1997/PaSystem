@@ -1,8 +1,12 @@
 <?php
-require_once(dirname(__FILE__) . "/../../php/class/Logger.php");
-require_once(dirname(__FILE__) . "/../../php/utils/DataUtils.php");
-require_once(dirname(__FILE__) . "/../../php/curl/CurlService.php");
-require_once(dirname(__FILE__) . "/../../php/utils/RequestUtils.php");
+namespace App\Shell;
+
+use App\Core\MyLogger;
+use App\Helper\DataUtils;
+use App\Helper\ExcelUtils;
+use App\Service\CurlService;
+use App\Service\RedisService;
+use App\Helper\RequestUtils;
 
 /**
  * 仅限用于同步生产数据到测试环境数据mongo的增删改查，其中delete和create只有test环境有，而find查询是pro和test有

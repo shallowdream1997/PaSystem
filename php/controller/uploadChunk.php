@@ -1,5 +1,7 @@
 <?php
-require_once dirname(__FILE__) . '/../requiredfile/requiredChorm.php';
+namespace App\Controller;
+
+use App\Helper\DataUtils;
 
 class uploadChunk
 {
