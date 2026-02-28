@@ -1,0 +1,72 @@
+@startuml
+title 用户下载 前端市场复核 模板流程
+
+start
+
+:用户A进入前端市场复核页面;
+:点击【下载模板】;
+
+:调用「下载Excel模板接口」;
+
+:.......原逻辑保持不变;
+
+' ====== ENPT校验流程开始 ======
+:读取清单是否符合变体主题绑定的条件配置;
+
+if (符合校验条件?) then (是)
+    if (根据中文分类获取ENPT) then (获取到了)
+        if (根据PT和开发渠道，查含\n体主题) then (查到了)
+            :将查询到的变体主题\n作为下拉选项写入模板;
+        else (没查到)
+            :报错，禁止下载模版;
+            note right
+                报错文本：产品线对应PT查询
+                不到变体主题
+            end note
+            stop
+        endif
+    else (无法获取到)
+        :报错，禁止下载模版;
+        note right
+            报错文本：获取产品线PT失败
+        end note
+        stop
+    endif
+else (否)
+    :直接返回;
+    note left
+        不符合校验条件，
+        不执行后续流程
+    end note
+    stop
+endif
+' ====== ENPT校验流程结束 ======
+
+:调用「获取分组属性项」方法;
+
+if (能否查到有效的分组属性项?) then (是)
+    :将查询到的分组属性项\n作为下拉选项写入模板;
+else (否)
+    :使用默认分组属性项列表:
+    [color, style, model, size,
+     color-size, sizename-stylename]
+    作为下拉选项写入模板;
+endif
+
+:其他字段处理;
+note right
+  - 是否捆绑SGU: 固定下拉值（是/否）
+  - SGU分组: 固定下拉值（sgu_1 ~ sgu_12）
+  - SGU捆绑渠道: 固定下拉值（如 amazon_us, aliexpress_uk 等）
+  - 分组属性值-技术维度: 用户自定义输入（文本）
+  - 分组属性值-size: 用户自定义输入（文本）
+  - 分组属性值-车型: 用户自定义输入（文本）
+end note
+
+:生成并填充模板结构（含下拉、输入占位）;
+:导出为 .xlsx 文件;
+
+:返回文件给用户;
+
+stop
+@enduml
