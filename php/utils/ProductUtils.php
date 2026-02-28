@@ -1,5 +1,7 @@
 <?php
-require_once(dirname(__FILE__) ."/../../php/class/Logger.php");
+namespace App\Helper;
+
+use App\Core\MyLogger;
 
 /**
  * 产品表处理的工具类

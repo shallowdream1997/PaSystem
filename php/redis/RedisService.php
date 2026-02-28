@@ -1,5 +1,6 @@
 <?php
-require_once(dirname(__FILE__) . "/../../php/constant/Constant.php");
+namespace App\Service;
+
 /**
  * redis 服务
  * Class RedisService
@@ -8,12 +9,12 @@ class RedisService
 {
     /**
      * redis本地调用
-     * @var Redis
+     * @var \Redis
      */
     private $redis;
 
     public function __construct(){
-        $this->redis = new Redis();
+        $this->redis = new \Redis();
         $this->redis->connect(REDIS_HOST,REDIS_PORT);
         $this->redis->auth(REDIS_PWD);
     }

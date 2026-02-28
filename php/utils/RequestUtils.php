@@ -1,7 +1,8 @@
 <?php
-require_once(dirname(__FILE__) ."/../../php/requiredfile/requiredChorm.php");
-require_once(dirname(__FILE__) ."/../../php/utils/ProductUtils.php");
+namespace App\Helper;
 
+use App\Service\CurlService;
+use App\Service\RedisService;
 
 class RequestUtils
 {
@@ -561,7 +562,7 @@ class RequestUtils
 
         // 检查是否有错误
         if (curl_errno($ch)) {
-            throw new Exception('cURL error: ' . curl_error($ch));
+            throw new \Exception('cURL error: ' . curl_error($ch));
         }
 
         // 关闭cURL资源
@@ -634,7 +635,7 @@ class RequestUtils
 
         // 检查是否有错误
         if (curl_errno($ch)) {
-            throw new Exception('cURL error: ' . curl_error($ch));
+            throw new \Exception('cURL error: ' . curl_error($ch));
         }
 
         // 关闭cURL资源

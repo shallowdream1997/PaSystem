@@ -1,5 +1,5 @@
 <?php
-require dirname(__FILE__) . '/../../vendor/autoload.php';
+namespace App\Helper;
 
 // 使用PhpSpreadsheet替代PHPExcel
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -305,7 +305,7 @@ class ExcelUtils
             }
     
             return $data;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             die("读取CSV失败: " . $e->getMessage());
         }
     }

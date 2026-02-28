@@ -1,4 +1,5 @@
 <?php
+namespace App\Core;
 
 /**
  * 日志类 - 支持自动创建目录
@@ -48,23 +49,6 @@ class MyLogger {
         error_log($message);
     }
 
-    public function log3($message = ""){
-        // 保持原有功能，但添加目录检查
-        $this->ensureDirectoryExists(dirname($this->logFile));
-        // 创建自定义的文件处理器和格式化器
-        $handler = new FileHandler($this->logFile);
-        $formatter = new CommonFormatter();
-
-        // 获取 LoggerOne 的实例
-        $logger = LoggerOne::getInstance();
-
-        // 设置处理器和格式化器
-        $logger->setHandler($handler);
-        $logger->setFormatter($formatter);
-
-        // 写入日志
-        $logger->info($message);
-    }
     
     /**
      * 获取当前日志文件路径

@@ -1,5 +1,7 @@
 <?php
-require_once(dirname(__FILE__) ."/../../php/class/Logger.php");
+namespace App\Service;
+
+use App\Core\MyLogger;
 
 class CurlService
 {
@@ -971,7 +973,7 @@ class CurlService
         if (curl_errno($ch)) {
             $error = 'cURL error: ' . curl_error($ch);
             curl_close($ch);
-            throw new Exception($error);
+            throw new \Exception($error);
         }
 
         curl_close($ch);
