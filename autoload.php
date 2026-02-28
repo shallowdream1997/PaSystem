@@ -7,11 +7,14 @@
 // 1. 加载 Composer 依赖
 require_once __DIR__ . '/vendor/autoload.php';
 
-// 2. 定义项目根目录
+// 2. 加载常量定义
+require_once __DIR__ . '/php/constant/Constant.php';
+
+// 3. 定义项目根目录
 define('PA_ROOT', __DIR__);
 define('PA_PHP', PA_ROOT . '/php');
 
-// 3. PSR-4 自动加载映射（目录名 => 命名空间）
+// 4. PSR-4 自动加载映射（目录名 => 命名空间）
 $classMap = [
     // 核心类
     'class' => 'App\\Core',
@@ -25,7 +28,7 @@ $classMap = [
     'utils' => 'App\\Helper',
 ];
 
-// 4. 注册自动加载器
+// 5. 注册自动加载器
 spl_autoload_register(function ($class) use ($classMap) {
     // 只处理 App 命名空间
     if (strpos($class, 'App\\') !== 0) {
@@ -54,7 +57,7 @@ spl_autoload_register(function ($class) use ($classMap) {
     }
 });
 
-// 5. 创建向后兼容的类别名
+// 6. 创建向后兼容的类别名
 spl_autoload_register(function ($class) {
     // 旧类名到新类名的映射
     $aliases = [

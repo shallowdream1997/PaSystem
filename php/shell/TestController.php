@@ -84,10 +84,34 @@ class TestController
     public function readPaSkuPhotoProgress()
     {
         $excelUtils = new ExcelUtils();
-        $list = $excelUtils->getXlsxData("../../export/default/图片拍摄进度导出_20260227175111.xlsx");
-        $this->log(count($list));
+        // 使用绝对路径
+        $filePath = __DIR__ . "/../../export/default/图片拍摄进度导出_20260227175111.xlsx";
+        $list = $excelUtils->getXlsxData($filePath);
+        $this->log("读取到 " . count($list) . " 条数据");
+        return $list;
     }
 }
 
-$c = new TestController();
-$c->readPaSkuPhotoProgress();
+// 如果直接运行此文件，则执行测试
+if (basename(__FILE__) === basename($_SERVER['PHP_SELF'] ?? '')) {
+    // 加载 autoload
+    require_once __DIR__ . '/../../autoload.php';
+    
+    echo "TestController 测试开始\n";
+    echo "====================\n\n";
+    
+    // 执行测试
+    $c = new TestController();
+    
+    // 测试方法：读取Excel文件
+    echo "测试 readPaSkuPhotoProgress 方法...\n";
+    try {
+        $result = $c->readPaSkuPhotoProgress();
+        echo "✓ 执行成功！读取到 " . count($result) . " 条数据\n";
+    } catch (\Exception $e) {
+        echo "✗ 执行失败：" . $e->getMessage() . "\n";
+    }
+    
+    echo "\n====================\n";
+    echo "测试完成\n";
+}
