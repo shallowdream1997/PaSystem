@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>登记个人IP</title>
+    <link href="../css_js/bootstrap-5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../css_js/script/jquery-3.7.0.min.js"></script>
+    <script src="../css_js/bootstrap-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.staticfile.org/axios/0.18.0/axios.min.js"></script>
+    <script src="../css_js/script/qs.min.js"></script>
+    <!--粒子特效-->
+    <link rel="stylesheet" href="../css_js/own/lizi.css">
+</head>
+<body>
+<div class="container text-center" id="app">
+    <div style="margin-top: 20px" class="row">
+        <div class="col-5"><h3 style="color: yellow">{{message}} <br> <span style="color: red">当前环境：{{env == 'test' ? '测试环境' :  (env == 'local' ?  '开发环境' : '生产环境')}}</span></h3></div>
+        <div class="col-7">
+            <div class="mb-3">
+                <input type="text" v-model="userName" class="form-control" placeholder="你的姓名">
+            </div>
+            <div class="row">
+                <div class="col-3">
+                    <button class="btn btn-primary" @click="update">登记IP</button>
+                </div>
+                <div class="col-3">
+                    <button class="btn btn-primary" @click="initPage">刷新</button>
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="col-12" style="margin-top: 20px">
+            <table class="table table-dark table-striped align-middle" v-if="list && list.length > 0">
+                <thead>
+                <tr>
+                    <th scope="col">姓名</th>
+                    <th scope="col">IP</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="info in list" :key="info.ip">
+                    <th scope="row">{{ info.name }}</th>
+                    <td>{{ info.ip }}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-12">
+            <h5 style="color: red">{{loading}}</h5>
+        </div>
+        <div class="col-12">
+            <h4 style="color: red">{{errorMsg}}</h4>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
+<script src="../css_js/own/lizi.js"></script>
+
+<script>
+    const {createApp, ref} = Vue
+
+
+    createApp({
+
+        data() {
+            this.initPage();
+            return {
+                message: '登记个人IP',
+                userName: '',
+                errorMsg: '',
+                successMsg: '',
+                list: [],
+                loading: '',
+                env:"",
+                url:"http://172.16.29.23:90/php/controller",
+                header: {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 其他自定义头
+                    }
+                }
+            }
+        },
+
+        methods: {
+            async initPage(){
+                const data = {
+                    action: "registerIp",
+                    params: {},
+                };
+                this.header = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 其他自定义头
+                    }
+                };
+                this.url = "http://172.16.29.23:90/php/controller";
+                let res = await axios.post(`${this.url}/search.php`, data,this.header).catch(function (error) {
+                    this.errorMsg = "网络错误";
+                });
+                this.loading = "";
+                if (res.status === 200) {
+                    if (res.data.data.length === 0) {
+                        this.errorMsg = "没有数据";
+                    } else {
+                        console.log(res.data.data);
+                        this.list = res.data.data;
+                        console.log(this.list)
+                        this.env = res.data.env;
+                    }
+                }
+            },
+            async update() {
+                this.loading = "............请等待，正在处理数据中..........";
+                this.errorMsg = "";
+
+                const data = {
+                    action: "registerIp",
+                    params: {
+                        userName: this.userName
+                    },
+                };
+
+                let res = await axios.post(`${this.url}/update.php`, data,this.header).catch(function (error) {
+                    this.errorMsg = "网络错误";
+                });
+                console.log(res)
+                if (res.status === 200) {
+                    if (res.data.data.length === 0) {
+                        this.errorMsg = "没有数据";
+                    } else {
+                        this.list = res.data.data;
+                        console.log(this.list)
+                        this.env = res.data.env;
+                    }
+                } else {
+                    this.errorMsg = "网络错误";
+                }
+                this.loading = "";
+            }
+        }
+
+    }).mount('#app')
+
+
+</script>

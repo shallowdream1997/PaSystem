@@ -1,0 +1,10 @@
+{
+    "require": {
+        "psr/log": "1.1.4",
+        "monolog/monolog": "1.27.1",
+        "logger-one/logger-one": "^1.0",
+      "ext-redis": "*",
+      "ext-json": "*",
+        "phpoffice/phpspreadsheet": "1.29.2"
+    }
+}
