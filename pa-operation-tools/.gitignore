@@ -1,0 +1,15 @@
+# 运行时日志(不入库)
+php/log/
+
+# 导出运行产物(不入库;历史已跟踪文件保留)
+php/export/
+
+# 本地工具(composer 二进制)
+composer.phar
+
+# 本地 IDE/工具配置(含本地绝对路径,不入库)
+.claude/
+.idea/
+
+# 本地敏感配置(网关 token 等,不入库)
+php/config/

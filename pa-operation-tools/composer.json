@@ -1,0 +1,29 @@
+{
+    "name": "ux168/pa-operation-tools",
+    "description": "ux168 PA 运营修复系统(无框架 PHP 应用,Composer autoload 统一加载)",
+    "type": "project",
+    "require": {
+        "psr/log": "1.1.4",
+        "monolog/monolog": "1.27.1",
+        "logger-one/logger-one": "^1.0",
+        "phpoffice/phpspreadsheet": "1.29.2",
+        "ext-redis": "*",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "classmap": [
+            "php/curl",
+            "php/utils",
+            "php/redis",
+            "php/class",
+            "php/shell",
+            "php/job"
+        ],
+        "files": [
+            "php/constant/Constant.php"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
